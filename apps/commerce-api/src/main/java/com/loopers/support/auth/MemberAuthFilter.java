@@ -1,13 +1,17 @@
 package com.loopers.support.auth;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberReader;
 import com.loopers.domain.member.PasswordEncoder;
+import com.loopers.interfaces.api.ApiResponse;
+import com.loopers.support.error.ErrorType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
@@ -22,6 +26,7 @@ public class MemberAuthFilter extends OncePerRequestFilter {
 
     private final MemberReader memberReader;
     private final PasswordEncoder passwordEncoder;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -37,7 +42,7 @@ public class MemberAuthFilter extends OncePerRequestFilter {
 
         // 헤더가 없으면 401
         if (loginId == null || loginPw == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            sendUnauthorizedResponse(response);
             return;
         }
 
@@ -47,13 +52,22 @@ public class MemberAuthFilter extends OncePerRequestFilter {
             .orElse(null);
 
         if (member == null) {
-            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            sendUnauthorizedResponse(response);
             return;
         }
 
         // 인증 성공 - 회원 정보를 request에 저장
         request.setAttribute("authenticatedMember", member);
         filterChain.doFilter(request, response);
+    }
+
+    private void sendUnauthorizedResponse(HttpServletResponse response) throws IOException {
+        ErrorType errorType = ErrorType.UNAUTHORIZED;
+        response.setStatus(errorType.getStatus().value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+        ApiResponse<Object> body = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
+        objectMapper.writeValue(response.getWriter(), body);
     }
 
     private boolean requiresAuthentication(HttpServletRequest request) {

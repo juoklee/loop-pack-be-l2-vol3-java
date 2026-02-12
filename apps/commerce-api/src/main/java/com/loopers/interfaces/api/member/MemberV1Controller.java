@@ -4,6 +4,8 @@ import com.loopers.application.member.MemberFacade;
 import com.loopers.application.member.MemberInfo;
 import com.loopers.domain.member.Member;
 import com.loopers.interfaces.api.ApiResponse;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -60,9 +62,9 @@ public class MemberV1Controller {
 
     private Member getAuthenticatedMember(HttpServletRequest request) {
         Object attribute = request.getAttribute("authenticatedMember");
-        if (attribute == null) {
-            throw new IllegalStateException("인증된 회원 정보가 없습니다.");
+        if (!(attribute instanceof Member member)) {
+            throw new CoreException(ErrorType.UNAUTHORIZED, "인증된 회원 정보가 없습니다.");
         }
-        return (Member) attribute;
+        return member;
     }
 }

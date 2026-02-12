@@ -197,7 +197,7 @@ class MemberV1ApiE2ETest {
             );
         }
 
-        @DisplayName("인증 헤더가 없으면, 401 Unauthorized 응답을 받는다.")
+        @DisplayName("인증 헤더가 없으면, 401 Unauthorized와 표준 에러 바디를 반환한다.")
         @Test
         void returnsUnauthorized_whenNoAuthHeader() {
             // act
@@ -210,10 +210,15 @@ class MemberV1ApiE2ETest {
             );
 
             // assert
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED),
+                () -> assertThat(response.getBody()).isNotNull(),
+                () -> assertThat(response.getBody().meta().result()).isEqualTo(ApiResponse.Metadata.Result.FAIL),
+                () -> assertThat(response.getBody().meta().errorCode()).isEqualTo("Unauthorized")
+            );
         }
 
-        @DisplayName("잘못된 비밀번호로 조회하면, 401 Unauthorized 응답을 받는다.")
+        @DisplayName("잘못된 비밀번호로 조회하면, 401 Unauthorized와 표준 에러 바디를 반환한다.")
         @Test
         void returnsUnauthorized_whenWrongPassword() {
             // arrange - 먼저 회원가입
@@ -247,7 +252,12 @@ class MemberV1ApiE2ETest {
             );
 
             // assert
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED),
+                () -> assertThat(response.getBody()).isNotNull(),
+                () -> assertThat(response.getBody().meta().result()).isEqualTo(ApiResponse.Metadata.Result.FAIL),
+                () -> assertThat(response.getBody().meta().errorCode()).isEqualTo("Unauthorized")
+            );
         }
     }
 
@@ -387,6 +397,32 @@ class MemberV1ApiE2ETest {
 
             // assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @DisplayName("인증 헤더가 없으면, 401 Unauthorized와 표준 에러 바디를 반환한다.")
+        @Test
+        void returnsUnauthorized_whenNoAuthHeader() {
+            // arrange
+            MemberV1Dto.ChangePasswordRequest request = new MemberV1Dto.ChangePasswordRequest(
+                "Test1234!",
+                "NewPass5678!"
+            );
+
+            // act
+            ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                ENDPOINT_CHANGE_PASSWORD,
+                HttpMethod.PATCH,
+                new HttpEntity<>(request),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED),
+                () -> assertThat(response.getBody()).isNotNull(),
+                () -> assertThat(response.getBody().meta().result()).isEqualTo(ApiResponse.Metadata.Result.FAIL),
+                () -> assertThat(response.getBody().meta().errorCode()).isEqualTo("Unauthorized")
+            );
         }
 
         private void registerMember(String loginId, String password) {
