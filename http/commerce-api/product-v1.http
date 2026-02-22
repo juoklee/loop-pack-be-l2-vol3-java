@@ -1,0 +1,196 @@
+@baseUrl = http://localhost:8080
+
+###############################################
+# 사전 준비: 브랜드 등록
+###############################################
+
+### 브랜드 등록 (상품 등록 전 필요)
+POST {{baseUrl}}/api-admin/v1/brands
+Content-Type: application/json
+
+{
+  "name": "Nike",
+  "description": "Just Do It"
+}
+
+###############################################
+# 상품 등록 API (관리자)
+###############################################
+
+### 상품 등록 (정상)
+POST {{baseUrl}}/api-admin/v1/products
+Content-Type: application/json
+
+{
+  "brandId": 1,
+  "name": "에어맥스 90",
+  "description": "클래식 러닝화",
+  "price": 179000,
+  "stockQuantity": 100,
+  "maxOrderQuantity": 5
+}
+
+### 상품 등록 (설명 없이)
+POST {{baseUrl}}/api-admin/v1/products
+Content-Type: application/json
+
+{
+  "brandId": 1,
+  "name": "에어포스 1",
+  "description": null,
+  "price": 139000,
+  "stockQuantity": 50,
+  "maxOrderQuantity": 3
+}
+
+### 상품 등록 (존재하지 않는 브랜드 - 400)
+POST {{baseUrl}}/api-admin/v1/products
+Content-Type: application/json
+
+{
+  "brandId": 999,
+  "name": "테스트 상품",
+  "description": "설명",
+  "price": 10000,
+  "stockQuantity": 10,
+  "maxOrderQuantity": 1
+}
+
+### 상품 등록 (이름 빈 문자열 - 400)
+POST {{baseUrl}}/api-admin/v1/products
+Content-Type: application/json
+
+{
+  "brandId": 1,
+  "name": "  ",
+  "description": "설명",
+  "price": 10000,
+  "stockQuantity": 10,
+  "maxOrderQuantity": 1
+}
+
+### 상품 등록 (가격 0 - 400)
+POST {{baseUrl}}/api-admin/v1/products
+Content-Type: application/json
+
+{
+  "brandId": 1,
+  "name": "무료 상품",
+  "description": "설명",
+  "price": 0,
+  "stockQuantity": 10,
+  "maxOrderQuantity": 1
+}
+
+###############################################
+# 상품 목록 조회 API (공개)
+###############################################
+
+### 상품 목록 조회 (전체)
+GET {{baseUrl}}/api/v1/products
+
+### 상품 목록 조회 (키워드 검색 - 상품명)
+GET {{baseUrl}}/api/v1/products?keyword=에어맥스
+
+### 상품 목록 조회 (키워드 검색 - 브랜드명)
+GET {{baseUrl}}/api/v1/products?keyword=Nike
+
+### 상품 목록 조회 (브랜드 필터)
+GET {{baseUrl}}/api/v1/products?brandId=1
+
+### 상품 목록 조회 (가격 오름차순 정렬)
+GET {{baseUrl}}/api/v1/products?sort=PRICE_ASC
+
+### 상품 목록 조회 (가격 내림차순 정렬)
+GET {{baseUrl}}/api/v1/products?sort=PRICE_DESC
+
+### 상품 목록 조회 (좋아요 내림차순 정렬)
+GET {{baseUrl}}/api/v1/products?sort=LIKES_DESC
+
+### 상품 목록 조회 (페이지네이션)
+GET {{baseUrl}}/api/v1/products?page=0&size=10
+
+### 상품 목록 조회 (복합 조건)
+GET {{baseUrl}}/api/v1/products?keyword=에어&brandId=1&sort=PRICE_ASC&page=0&size=5
+
+###############################################
+# 상품 상세 조회 API (공개)
+###############################################
+
+### 상품 상세 조회 (정상 - 브랜드 정보 포함)
+GET {{baseUrl}}/api/v1/products/1
+
+### 상품 상세 조회 (존재하지 않는 ID - 404)
+GET {{baseUrl}}/api/v1/products/999
+
+###############################################
+# 상품 수정 API (관리자)
+###############################################
+
+### 상품 수정 (정상)
+PUT {{baseUrl}}/api-admin/v1/products/1
+Content-Type: application/json
+
+{
+  "name": "에어맥스 90 리뉴얼",
+  "description": "리뉴얼된 클래식 러닝화",
+  "price": 189000,
+  "maxOrderQuantity": 3
+}
+
+### 상품 수정 (존재하지 않는 ID - 404)
+PUT {{baseUrl}}/api-admin/v1/products/999
+Content-Type: application/json
+
+{
+  "name": "테스트",
+  "description": "테스트",
+  "price": 10000,
+  "maxOrderQuantity": 1
+}
+
+###############################################
+# 재고 수정 API (관리자)
+###############################################
+
+### 재고 수정 (정상)
+PATCH {{baseUrl}}/api-admin/v1/products/1/stock
+Content-Type: application/json
+
+{
+  "quantity": 200
+}
+
+### 재고 수정 (0으로 설정)
+PATCH {{baseUrl}}/api-admin/v1/products/1/stock
+Content-Type: application/json
+
+{
+  "quantity": 0
+}
+
+### 재고 수정 (음수 - 400)
+PATCH {{baseUrl}}/api-admin/v1/products/1/stock
+Content-Type: application/json
+
+{
+  "quantity": -1
+}
+
+### 재고 수정 (존재하지 않는 ID - 404)
+PATCH {{baseUrl}}/api-admin/v1/products/999/stock
+Content-Type: application/json
+
+{
+  "quantity": 10
+}
+
+###############################################
+# 상품 삭제 API (관리자)
+###############################################
+
+### 상품 삭제 (정상)
+DELETE {{baseUrl}}/api-admin/v1/products/1
+
+### 상품 삭제 (존재하지 않는 ID - 404)
+DELETE {{baseUrl}}/api-admin/v1/products/999

@@ -3,14 +3,17 @@ package com.loopers.application.brand;
 import com.loopers.domain.PageResult;
 import com.loopers.domain.brand.BrandService;
 import com.loopers.domain.brand.Brand;
+import com.loopers.domain.product.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @RequiredArgsConstructor
 @Component
 public class BrandFacade {
 
     private final BrandService brandService;
+    private final ProductService productService;
 
     public BrandInfo register(String name, String description) {
         Brand brand = brandService.register(name, description);
@@ -37,8 +40,9 @@ public class BrandFacade {
         brandService.update(id, name, description);
     }
 
+    @Transactional
     public void delete(Long id) {
-        // TODO: Phase 2에서 ProductService 추가 후 cascade soft delete 구현
         brandService.delete(id);
+        productService.deleteAllByBrandId(id);
     }
 }

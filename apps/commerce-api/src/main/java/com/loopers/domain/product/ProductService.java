@@ -1,0 +1,72 @@
+package com.loopers.domain.product;
+
+import com.loopers.domain.PageResult;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@RequiredArgsConstructor
+@Component
+public class ProductService {
+
+    private final ProductReader productReader;
+    private final ProductRepository productRepository;
+
+    @Transactional
+    public Product register(Long brandId, String name, String description, Long price, int stockQuantity, int maxOrderQuantity) {
+        Product product = Product.create(brandId, name, description, price, stockQuantity, maxOrderQuantity);
+        return productRepository.save(product);
+    }
+
+    @Transactional(readOnly = true)
+    public Product getProduct(Long id) {
+        return productReader.findById(id)
+                .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다."));
+    }
+
+    @Transactional
+    public void update(Long id, String name, String description, Long price, int maxOrderQuantity) {
+        Product product = getProduct(id);
+        product.update(name, description, price, maxOrderQuantity);
+    }
+
+    @Transactional
+    public void delete(Long id) {
+        Product product = getProduct(id);
+        product.delete();
+    }
+
+    @Transactional
+    public void updateStock(Long id, int quantity) {
+        Product product = getProduct(id);
+        product.updateStock(quantity);
+    }
+
+    @Transactional
+    public void deleteAllByBrandId(Long brandId) {
+        List<Product> products = productReader.findAllByBrandId(brandId);
+        for (Product product : products) {
+            product.delete();
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public PageResult<Product> getProducts(String keyword, Long brandId, ProductSortType sort, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Product> result = productReader.findAll(keyword, brandId, sort, pageable);
+        return new PageResult<>(
+            result.getContent(),
+            result.getTotalElements(),
+            result.getTotalPages(),
+            result.getNumber(),
+            result.getSize()
+        );
+    }
+}
