@@ -27,6 +27,13 @@ class MemberTest {
         }
     };
 
+    private Member createDefaultMember() {
+        return Member.create(
+            "testuser1", "Test1234!", "홍길동",
+            LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
+        );
+    }
+
     @DisplayName("필수값 검증 시, ")
     @Nested
     class ValidateRequired {
@@ -36,7 +43,7 @@ class MemberTest {
         void throwsBadRequest_whenLoginIdIsNull() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(null, "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder);
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("로그인ID는 필수입니다.");
@@ -47,7 +54,7 @@ class MemberTest {
         void throwsBadRequest_whenLoginIdIsBlank() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create("  ", "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder);
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("로그인ID는 필수입니다.");
@@ -58,7 +65,7 @@ class MemberTest {
         void throwsBadRequest_whenPasswordIsNull() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create("testuser1", null, "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder);
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("비밀번호는 필수입니다.");
@@ -69,7 +76,7 @@ class MemberTest {
         void throwsBadRequest_whenNameIsNull() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create("testuser1", "Test1234!", null,
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder);
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("이름은 필수입니다.");
@@ -80,10 +87,21 @@ class MemberTest {
         void throwsBadRequest_whenBirthDateIsNull() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create("testuser1", "Test1234!", "홍길동",
-                    null, "test@example.com", stubEncoder);
+                    null, Gender.MALE, "test@example.com", null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("생년월일은 필수입니다.");
+        }
+
+        @DisplayName("성별이 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenGenderIsNull() {
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                Member.create("testuser1", "Test1234!", "홍길동",
+                    LocalDate.of(1990, 1, 15), null, "test@example.com", null, stubEncoder);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+            assertThat(exception.getMessage()).isEqualTo("성별은 필수입니다.");
         }
 
         @DisplayName("이메일이 null이면, BAD_REQUEST 예외가 발생한다.")
@@ -91,7 +109,7 @@ class MemberTest {
         void throwsBadRequest_whenEmailIsNull() {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create("testuser1", "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), null, stubEncoder);
+                    LocalDate.of(1990, 1, 15), Gender.MALE, null, null, stubEncoder);
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("이메일은 필수입니다.");
@@ -105,25 +123,39 @@ class MemberTest {
         @DisplayName("모든 정보가 유효하면, 정상적으로 생성된다.")
         @Test
         void createsMember_whenAllFieldsAreValid() {
-            // Arrange
-            String loginId = "testuser1";
-            String password = "Test1234!";
-            String name = "홍길동";
-            LocalDate birthDate = LocalDate.of(1990, 1, 15);
-            String email = "test@example.com";
-
-            // Act
+            // Arrange & Act
             Member member = Member.create(
-                loginId, password, name, birthDate, email, stubEncoder
+                "testuser1", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", "010-1234-5678",
+                stubEncoder
             );
 
             // Assert
             assertAll(
-                () -> assertThat(member.getLoginId()).isEqualTo(loginId),
-                () -> assertThat(member.getPassword()).isEqualTo("encoded_" + password), // Stub이 반환한 값
-                () -> assertThat(member.getName()).isEqualTo(name),
-                () -> assertThat(member.getBirthDate()).isEqualTo(birthDate),
-                () -> assertThat(member.getEmail()).isEqualTo(email)
+                () -> assertThat(member.getLoginId()).isEqualTo("testuser1"),
+                () -> assertThat(member.verifyPassword("Test1234!", stubEncoder)).isTrue(),
+                () -> assertThat(member.getName()).isEqualTo("홍길동"),
+                () -> assertThat(member.getBirthDate()).isEqualTo(LocalDate.of(1990, 1, 15)),
+                () -> assertThat(member.getGender()).isEqualTo(Gender.MALE),
+                () -> assertThat(member.getEmail()).isEqualTo("test@example.com"),
+                () -> assertThat(member.getPhone()).isEqualTo("010-1234-5678")
+            );
+        }
+
+        @DisplayName("전화번호 없이 생성하면, phone이 null이다.")
+        @Test
+        void createsMember_whenPhoneIsNull() {
+            // Arrange & Act
+            Member member = Member.create(
+                "testuser1", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.FEMALE, "test@example.com", null,
+                stubEncoder
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(member.getGender()).isEqualTo(Gender.FEMALE),
+                () -> assertThat(member.getPhone()).isNull()
             );
         }
     }
@@ -135,18 +167,12 @@ class MemberTest {
         @DisplayName("영문과 숫자 외 문자가 포함되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenLoginIdContainsSpecialCharacters() {
-            // Arrange
-            String invalidLoginId = "test@user";
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    invalidLoginId, "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "test@user", "Test1234!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
     }
@@ -158,73 +184,48 @@ class MemberTest {
         @DisplayName("8자 미만이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenPasswordIsTooShort() {
-            // Arrange
-            String shortPassword = "Test12!"; // 7자
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", shortPassword, "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "testuser1", "Test12!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("16자 초과이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenPasswordIsTooLong() {
-            // Arrange
-            String longPassword = "Test1234!Test1234"; // 17자
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", longPassword, "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "testuser1", "Test1234!Test1234", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("허용되지 않은 문자(한글)가 포함되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenPasswordContainsInvalidCharacters() {
-            // Arrange
-            String invalidPassword = "Test123한글!"; // 한글 포함
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", invalidPassword, "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "testuser1", "Test123한글!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("생년월일이 포함되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenPasswordContainsBirthDate() {
-            // Arrange
-            LocalDate birthDate = LocalDate.of(1990, 1, 15);
-            String passwordWithBirthDate = "Test19900115!"; // 생년월일 포함
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", passwordWithBirthDate, "홍길동",
-                    birthDate, "test@example.com", stubEncoder
+                    "testuser1", "Test19900115!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
     }
@@ -236,52 +237,34 @@ class MemberTest {
         @DisplayName("한글과 영문이 혼합되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenNameContainsMixedLanguages() {
-            // Arrange
-            String mixedName = "Hong길동";
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", "Test1234!", mixedName,
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "testuser1", "Test1234!", "Hong길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("한글 이름에 공백이 포함되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenKoreanNameContainsSpace() {
-            // Arrange
-            String koreanNameWithSpace = "홍 길동";
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
-                    "testuser1", "Test1234!", koreanNameWithSpace,
-                    LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                    "testuser1", "Test1234!", "홍 길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("영문 이름의 연속 공백은 하나로 정규화된다.")
         @Test
         void normalizesConsecutiveSpaces_whenEnglishNameHasMultipleSpaces() {
-            // Arrange
-            String nameWithConsecutiveSpaces = "John  Doe";
-
-            // Act
             Member member = Member.create(
-                "testuser1", "Test1234!", nameWithConsecutiveSpaces,
-                LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
+                "testuser1", "Test1234!", "John  Doe",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null, stubEncoder
             );
-
-            // Assert
             assertThat(member.getName()).isEqualTo("John Doe");
         }
     }
@@ -293,19 +276,135 @@ class MemberTest {
         @DisplayName("올바르지 않은 형식이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenEmailFormatIsInvalid() {
-            // Arrange
-            String invalidEmail = "invalid-email";
-
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 Member.create(
                     "testuser1", "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), invalidEmail, stubEncoder
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "invalid-email", null, stubEncoder
                 );
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("전화번호 검증 시, ")
+    @Nested
+    class ValidatePhone {
+
+        @DisplayName("올바른 형식이면, 정상적으로 생성된다.")
+        @Test
+        void createsMember_whenPhoneFormatIsValid() {
+            Member member = Member.create(
+                "testuser1", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", "010-1234-5678",
+                stubEncoder
+            );
+            assertThat(member.getPhone()).isEqualTo("010-1234-5678");
+        }
+
+        @DisplayName("올바르지 않은 형식이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPhoneFormatIsInvalid() {
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                Member.create(
+                    "testuser1", "Test1234!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", "01012345678",
+                    stubEncoder
+                );
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+            assertThat(exception.getMessage()).isEqualTo("전화번호 형식이 올바르지 않습니다. (010-XXXX-XXXX)");
+        }
+
+        @DisplayName("하이픈 없는 번호이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPhoneHasNoHyphens() {
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                Member.create(
+                    "testuser1", "Test1234!", "홍길동",
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", "0101234567",
+                    stubEncoder
+                );
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("전화번호 수정 시, ")
+    @Nested
+    class UpdatePhone {
+
+        @DisplayName("유효한 전화번호로 수정하면, 정상적으로 변경된다.")
+        @Test
+        void updatesPhone_whenValidFormat() {
+            Member member = createDefaultMember();
+
+            member.updatePhone("010-9999-8888");
+
+            assertThat(member.getPhone()).isEqualTo("010-9999-8888");
+        }
+
+        @DisplayName("null로 수정하면, 전화번호가 삭제된다.")
+        @Test
+        void removesPhone_whenNull() {
+            Member member = Member.create(
+                "testuser1", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", "010-1234-5678",
+                stubEncoder
+            );
+
+            member.updatePhone(null);
+
+            assertThat(member.getPhone()).isNull();
+        }
+
+        @DisplayName("올바르지 않은 형식이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenInvalidFormat() {
+            Member member = createDefaultMember();
+
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                member.updatePhone("invalid");
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("회원 탈퇴 시, ")
+    @Nested
+    class Withdraw {
+
+        @DisplayName("비밀번호가 일치하면, soft delete 처리된다.")
+        @Test
+        void deletedMember_whenPasswordMatches() {
+            Member member = createDefaultMember();
+
+            member.withdraw("Test1234!", stubEncoder);
+
+            assertThat(member.getDeletedAt()).isNotNull();
+        }
+
+        @DisplayName("비밀번호가 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPasswordIsNull() {
+            Member member = createDefaultMember();
+
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                member.withdraw(null, stubEncoder);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+            assertThat(exception.getMessage()).isEqualTo("비밀번호는 필수입니다.");
+        }
+
+        @DisplayName("비밀번호가 일치하지 않으면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPasswordDoesNotMatch() {
+            Member member = createDefaultMember();
+
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                member.withdraw("WrongPass1!", stubEncoder);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+            assertThat(exception.getMessage()).isEqualTo("비밀번호가 일치하지 않습니다.");
         }
     }
 
@@ -313,25 +412,14 @@ class MemberTest {
     @Nested
     class ChangePassword {
 
-        private Member createMember() {
-            return Member.create(
-                "testuser1", "Test1234!", "홍길동",
-                LocalDate.of(1990, 1, 15), "test@example.com", stubEncoder
-            );
-        }
-
         @DisplayName("현재 비밀번호가 null이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenCurrentPasswordIsNull() {
-            // Arrange
-            Member member = createMember();
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 member.changePassword(null, "NewPass5678!", stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("현재 비밀번호는 필수입니다.");
         }
@@ -339,15 +427,11 @@ class MemberTest {
         @DisplayName("새 비밀번호가 null이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenNewPasswordIsNull() {
-            // Arrange
-            Member member = createMember();
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
                 member.changePassword("Test1234!", null, stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("새 비밀번호는 필수입니다.");
         }
@@ -355,17 +439,11 @@ class MemberTest {
         @DisplayName("현재 비밀번호가 일치하지 않으면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenCurrentPasswordDoesNotMatch() {
-            // Arrange
-            Member member = createMember();
-            String wrongCurrentPassword = "WrongPass1!";
-            String newPassword = "NewPass5678!";
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                member.changePassword(wrongCurrentPassword, newPassword, stubEncoder);
+                member.changePassword("WrongPass1!", "NewPass5678!", stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("현재 비밀번호가 일치하지 않습니다.");
         }
@@ -373,17 +451,11 @@ class MemberTest {
         @DisplayName("새 비밀번호가 현재 비밀번호와 동일하면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenNewPasswordIsSameAsCurrent() {
-            // Arrange
-            Member member = createMember();
-            String currentPassword = "Test1234!";
-            String samePassword = "Test1234!";
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                member.changePassword(currentPassword, samePassword, stubEncoder);
+                member.changePassword("Test1234!", "Test1234!", stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("새 비밀번호는 현재 비밀번호와 달라야 합니다.");
         }
@@ -391,34 +463,22 @@ class MemberTest {
         @DisplayName("새 비밀번호가 규칙을 위반하면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenNewPasswordViolatesRules() {
-            // Arrange
-            Member member = createMember();
-            String currentPassword = "Test1234!";
-            String shortPassword = "short"; // 8자 미만
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                member.changePassword(currentPassword, shortPassword, stubEncoder);
+                member.changePassword("Test1234!", "short", stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("새 비밀번호에 생년월일이 포함되면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenNewPasswordContainsBirthDate() {
-            // Arrange
-            Member member = createMember();
-            String currentPassword = "Test1234!";
-            String passwordWithBirthDate = "Pass19900115!"; // 생년월일 포함
+            Member member = createDefaultMember();
 
-            // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                member.changePassword(currentPassword, passwordWithBirthDate, stubEncoder);
+                member.changePassword("Test1234!", "Pass19900115!", stubEncoder);
             });
-
-            // Assert
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
             assertThat(exception.getMessage()).isEqualTo("비밀번호에 생년월일을 포함할 수 없습니다.");
         }
@@ -426,16 +486,11 @@ class MemberTest {
         @DisplayName("모든 조건이 유효하면, 비밀번호가 정상적으로 변경된다.")
         @Test
         void changesPassword_whenAllConditionsAreValid() {
-            // Arrange
-            Member member = createMember();
-            String currentPassword = "Test1234!";
-            String newPassword = "NewPass5678!";
+            Member member = createDefaultMember();
 
-            // Act
-            member.changePassword(currentPassword, newPassword, stubEncoder);
+            member.changePassword("Test1234!", "NewPass5678!", stubEncoder);
 
-            // Assert
-            assertThat(member.getPassword()).isEqualTo("encoded_" + newPassword);
+            assertThat(member.verifyPassword("NewPass5678!", stubEncoder)).isTrue();
         }
     }
 }

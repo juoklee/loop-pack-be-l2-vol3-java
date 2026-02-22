@@ -9,7 +9,22 @@ Content-Type: application/json
   "password": "Test1234!",
   "name": "홍길동",
   "birthDate": "1990-01-15",
-  "email": "test@example.com"
+  "gender": "MALE",
+  "email": "test@example.com",
+  "phone": "010-1234-5678"
+}
+
+### 회원가입 (전화번호 없이 - 정상)
+POST {{baseUrl}}/api/v1/members
+Content-Type: application/json
+
+{
+  "loginId": "testUser2",
+  "password": "Test1234!",
+  "name": "김영희",
+  "birthDate": "1992-03-20",
+  "gender": "FEMALE",
+  "email": "test2@example.com"
 }
 
 ### 회원가입 (중복 ID 테스트 - 위 요청 먼저 실행 후)
@@ -21,6 +36,7 @@ Content-Type: application/json
   "password": "Test5678!",
   "name": "김철수",
   "birthDate": "1985-05-20",
+  "gender": "MALE",
   "email": "second@example.com"
 }
 
@@ -29,10 +45,11 @@ POST {{baseUrl}}/api/v1/members
 Content-Type: application/json
 
 {
-  "loginId": "testUser2",
+  "loginId": "testUser3",
   "password": "Test1234!",
   "name": "홍길동",
   "birthDate": "1990-01-15",
+  "gender": "MALE",
   "email": "invalid-email"
 }
 
@@ -41,11 +58,12 @@ POST {{baseUrl}}/api/v1/members
 Content-Type: application/json
 
 {
-  "loginId": "testUser3",
+  "loginId": "testUser4",
   "password": "short",
   "name": "홍길동",
   "birthDate": "1990-01-15",
-  "email": "test3@example.com"
+  "gender": "MALE",
+  "email": "test4@example.com"
 }
 
 ###############################################
@@ -111,4 +129,62 @@ X-Loopers-LoginPw: Test1234!
 {
   "currentPassword": "Test1234!",
   "newPassword": "short"
+}
+
+###############################################
+# 전화번호 수정 API
+###############################################
+
+### 전화번호 수정 (정상)
+PATCH {{baseUrl}}/api/v1/members/me
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "phone": "010-9999-8888"
+}
+
+### 전화번호 수정 (잘못된 형식 - 400)
+PATCH {{baseUrl}}/api/v1/members/me
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "phone": "01012345678"
+}
+
+### 전화번호 제거 (null로 설정 - 정상)
+PATCH {{baseUrl}}/api/v1/members/me
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "phone": null
+}
+
+###############################################
+# 회원 탈퇴 API
+###############################################
+
+### 회원 탈퇴 (정상 - 회원가입 먼저 실행 후)
+DELETE {{baseUrl}}/api/v1/members/me
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "password": "Test1234!"
+}
+
+### 회원 탈퇴 (비밀번호 불일치 - 400)
+DELETE {{baseUrl}}/api/v1/members/me
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "password": "WrongPass1!"
 }

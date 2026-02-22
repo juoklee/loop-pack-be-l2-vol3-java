@@ -44,4 +44,12 @@ class ArchitectureTest {
                     "jakarta.persistence..",
                     "org.springframework.data.."
             );
+
+    // — 4. Interfaces 계층은 Domain Entity에 직접 의존하지 않음 —
+    // enum, VO 등 값 타입은 허용하되, @Entity 클래스는 차단
+    @ArchTest
+    static final ArchRule interfaces_should_not_depend_on_domain_entities = noClasses()
+            .that().resideInAPackage("..interfaces..")
+            .should().dependOnClassesThat()
+            .areAnnotatedWith("jakarta.persistence.Entity");
 }

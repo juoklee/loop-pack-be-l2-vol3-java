@@ -1,16 +1,19 @@
 package com.loopers.application.member;
 
+import com.loopers.domain.member.Gender;
 import com.loopers.domain.member.Member;
 
 import java.time.LocalDate;
 
-public record MemberInfo(String loginId, String name, LocalDate birthDate, String email) {
+public record MemberInfo(String loginId, String name, LocalDate birthDate, Gender gender, String email, String phone) {
     public static MemberInfo from(Member member) {
         return new MemberInfo(
             member.getLoginId(),
             member.getName(),
             member.getBirthDate(),
-            member.getEmail()
+            member.getGender(),
+            member.getEmail(),
+            member.getPhone()
         );
     }
 
@@ -19,7 +22,9 @@ public record MemberInfo(String loginId, String name, LocalDate birthDate, Strin
             member.getLoginId(),
             maskName(member.getName()),
             member.getBirthDate(),
-            member.getEmail()
+            member.getGender(),
+            member.getEmail(),
+            member.getPhone()
         );
     }
 

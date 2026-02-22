@@ -1,5 +1,6 @@
 package com.loopers.interfaces.api;
 
+import com.loopers.domain.member.Gender;
 import com.loopers.infrastructure.member.MemberJpaRepository;
 import com.loopers.interfaces.api.member.MemberV1Dto;
 import com.loopers.utils.DatabaseCleanUp;
@@ -64,7 +65,9 @@ class MemberV1ApiE2ETest {
                 "Test1234!",
                 "홍길동",
                 LocalDate.of(1990, 1, 15),
-                "test@example.com"
+                Gender.MALE,
+                "test@example.com",
+                "010-1234-5678"
             );
 
             // act
@@ -80,6 +83,8 @@ class MemberV1ApiE2ETest {
             assertAll(
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED),
                 () -> assertThat(response.getBody().data().member().loginId()).isEqualTo("testUser1"),
+                () -> assertThat(response.getBody().data().member().gender()).isEqualTo(Gender.MALE),
+                () -> assertThat(response.getBody().data().member().phone()).isEqualTo("010-1234-5678"),
                 () -> assertThat(memberJpaRepository.existsByLoginId("testUser1")).isTrue()
             );
         }
@@ -88,19 +93,7 @@ class MemberV1ApiE2ETest {
         @Test
         void returnsBadRequest_whenLoginIdAlreadyExists() {
             // arrange - 먼저 회원가입
-            MemberV1Dto.RegisterRequest firstRequest = new MemberV1Dto.RegisterRequest(
-                "existingUser",
-                "Test1234!",
-                "홍길동",
-                LocalDate.of(1990, 1, 15),
-                "first@example.com"
-            );
-            testRestTemplate.exchange(
-                ENDPOINT_REGISTER,
-                HttpMethod.POST,
-                new HttpEntity<>(firstRequest),
-                new ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>>() {}
-            );
+            registerMember("existingUser", "Test1234!");
 
             // arrange - 같은 로그인ID로 다시 가입 시도
             MemberV1Dto.RegisterRequest duplicateRequest = new MemberV1Dto.RegisterRequest(
@@ -108,16 +101,17 @@ class MemberV1ApiE2ETest {
                 "Test5678!",
                 "김철수",
                 LocalDate.of(1985, 5, 20),
-                "second@example.com"
+                Gender.MALE,
+                "second@example.com",
+                null
             );
 
             // act
-            ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>> responseType = new ParameterizedTypeReference<>() {};
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_REGISTER,
                 HttpMethod.POST,
                 new HttpEntity<>(duplicateRequest),
-                responseType
+                new ParameterizedTypeReference<>() {}
             );
 
             // assert
@@ -133,16 +127,17 @@ class MemberV1ApiE2ETest {
                 "Test1234!",
                 "홍길동",
                 LocalDate.of(1990, 1, 15),
-                "invalid-email"
+                Gender.MALE,
+                "invalid-email",
+                null
             );
 
             // act
-            ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>> responseType = new ParameterizedTypeReference<>() {};
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_REGISTER,
                 HttpMethod.POST,
                 new HttpEntity<>(request),
-                responseType
+                new ParameterizedTypeReference<>() {}
             );
 
             // assert
@@ -160,19 +155,7 @@ class MemberV1ApiE2ETest {
             // arrange - 먼저 회원가입
             String loginId = "testUser1";
             String password = "Test1234!";
-            MemberV1Dto.RegisterRequest registerRequest = new MemberV1Dto.RegisterRequest(
-                loginId,
-                password,
-                "홍길동",
-                LocalDate.of(1990, 1, 15),
-                "test@example.com"
-            );
-            testRestTemplate.exchange(
-                ENDPOINT_REGISTER,
-                HttpMethod.POST,
-                new HttpEntity<>(registerRequest),
-                new ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>>() {}
-            );
+            registerMember(loginId, password);
 
             // arrange - 인증 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -180,20 +163,20 @@ class MemberV1ApiE2ETest {
             headers.set(HEADER_LOGIN_PW, password);
 
             // act
-            ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>> responseType = new ParameterizedTypeReference<>() {};
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_ME,
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                responseType
+                new ParameterizedTypeReference<>() {}
             );
 
             // assert
             assertAll(
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
                 () -> assertThat(response.getBody().data().member().loginId()).isEqualTo(loginId),
-                () -> assertThat(response.getBody().data().member().name()).isEqualTo("홍길*"),  // 마스킹 확인
-                () -> assertThat(response.getBody().data().member().email()).isEqualTo("test@example.com")
+                () -> assertThat(response.getBody().data().member().name()).isEqualTo("홍길*"),
+                () -> assertThat(response.getBody().data().member().gender()).isEqualTo(Gender.MALE),
+                () -> assertThat(response.getBody().data().member().email()).isEqualTo(loginId + "@example.com")
             );
         }
 
@@ -201,12 +184,11 @@ class MemberV1ApiE2ETest {
         @Test
         void returnsUnauthorized_whenNoAuthHeader() {
             // act
-            ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>> responseType = new ParameterizedTypeReference<>() {};
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_ME,
                 HttpMethod.GET,
                 new HttpEntity<>(null),
-                responseType
+                new ParameterizedTypeReference<>() {}
             );
 
             // assert
@@ -223,19 +205,7 @@ class MemberV1ApiE2ETest {
         void returnsUnauthorized_whenWrongPassword() {
             // arrange - 먼저 회원가입
             String loginId = "testUser2";
-            MemberV1Dto.RegisterRequest registerRequest = new MemberV1Dto.RegisterRequest(
-                loginId,
-                "Test1234!",
-                "홍길동",
-                LocalDate.of(1990, 1, 15),
-                "test2@example.com"
-            );
-            testRestTemplate.exchange(
-                ENDPOINT_REGISTER,
-                HttpMethod.POST,
-                new HttpEntity<>(registerRequest),
-                new ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>>() {}
-            );
+            registerMember(loginId, "Test1234!");
 
             // arrange - 잘못된 비밀번호로 인증 헤더 설정
             HttpHeaders headers = new HttpHeaders();
@@ -243,12 +213,11 @@ class MemberV1ApiE2ETest {
             headers.set(HEADER_LOGIN_PW, "WrongPassword1!");
 
             // act
-            ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>> responseType = new ParameterizedTypeReference<>() {};
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_ME,
                 HttpMethod.GET,
                 new HttpEntity<>(headers),
-                responseType
+                new ParameterizedTypeReference<>() {}
             );
 
             // assert
@@ -312,18 +281,17 @@ class MemberV1ApiE2ETest {
         @DisplayName("현재 비밀번호가 일치하지 않으면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenCurrentPasswordNotMatch() {
-            // arrange - 먼저 회원가입
+            // arrange
             String loginId = "testUser2";
             String currentPassword = "Test1234!";
             registerMember(loginId, currentPassword);
 
-            // arrange - 인증 헤더와 잘못된 현재 비밀번호로 요청
             HttpHeaders headers = new HttpHeaders();
             headers.set(HEADER_LOGIN_ID, loginId);
             headers.set(HEADER_LOGIN_PW, currentPassword);
 
             MemberV1Dto.ChangePasswordRequest request = new MemberV1Dto.ChangePasswordRequest(
-                "WrongCurrent1!",  // 잘못된 현재 비밀번호
+                "WrongCurrent1!",
                 "NewPass5678!"
             );
 
@@ -342,19 +310,18 @@ class MemberV1ApiE2ETest {
         @DisplayName("새 비밀번호가 현재 비밀번호와 동일하면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenNewPasswordSameAsCurrent() {
-            // arrange - 먼저 회원가입
+            // arrange
             String loginId = "testUser3";
             String currentPassword = "Test1234!";
             registerMember(loginId, currentPassword);
 
-            // arrange - 인증 헤더와 동일한 비밀번호로 요청
             HttpHeaders headers = new HttpHeaders();
             headers.set(HEADER_LOGIN_ID, loginId);
             headers.set(HEADER_LOGIN_PW, currentPassword);
 
             MemberV1Dto.ChangePasswordRequest request = new MemberV1Dto.ChangePasswordRequest(
                 currentPassword,
-                currentPassword  // 현재 비밀번호와 동일
+                currentPassword
             );
 
             // act
@@ -372,19 +339,18 @@ class MemberV1ApiE2ETest {
         @DisplayName("새 비밀번호가 규칙을 위반하면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenNewPasswordInvalid() {
-            // arrange - 먼저 회원가입
+            // arrange
             String loginId = "testUser4";
             String currentPassword = "Test1234!";
             registerMember(loginId, currentPassword);
 
-            // arrange - 인증 헤더와 규칙 위반 비밀번호로 요청
             HttpHeaders headers = new HttpHeaders();
             headers.set(HEADER_LOGIN_ID, loginId);
             headers.set(HEADER_LOGIN_PW, currentPassword);
 
             MemberV1Dto.ChangePasswordRequest request = new MemberV1Dto.ChangePasswordRequest(
                 currentPassword,
-                "short"  // 8자 미만
+                "short"
             );
 
             // act
@@ -424,22 +390,177 @@ class MemberV1ApiE2ETest {
                 () -> assertThat(response.getBody().meta().errorCode()).isEqualTo("Unauthorized")
             );
         }
+    }
 
-        private void registerMember(String loginId, String password) {
-            MemberV1Dto.RegisterRequest registerRequest = new MemberV1Dto.RegisterRequest(
-                loginId,
-                password,
-                "홍길동",
-                LocalDate.of(1990, 1, 15),
-                loginId + "@example.com"
+    @DisplayName("PATCH /api/v1/members/me (내 정보 수정)")
+    @Nested
+    class UpdatePhone {
+
+        @DisplayName("유효한 전화번호로 수정하면, 200 OK 응답을 받는다.")
+        @Test
+        void returnsOk_whenValidPhone() {
+            // arrange
+            String loginId = "testUser1";
+            String password = "Test1234!";
+            registerMember(loginId, password);
+
+            MemberV1Dto.UpdatePhoneRequest request = new MemberV1Dto.UpdatePhoneRequest("010-9999-8888");
+
+            // act
+            ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.PATCH,
+                new HttpEntity<>(request, authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
             );
-            testRestTemplate.exchange(
-                ENDPOINT_REGISTER,
-                HttpMethod.POST,
-                new HttpEntity<>(registerRequest),
-                new ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>>() {}
+
+            // assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            // 수정 확인
+            ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> meResponse = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
             );
+            assertThat(meResponse.getBody().data().member().phone()).isEqualTo("010-9999-8888");
+        }
+
+        @DisplayName("잘못된 전화번호 형식이면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenInvalidPhone() {
+            // arrange
+            String loginId = "testUser2";
+            String password = "Test1234!";
+            registerMember(loginId, password);
+
+            MemberV1Dto.UpdatePhoneRequest request = new MemberV1Dto.UpdatePhoneRequest("invalid");
+
+            // act
+            ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.PATCH,
+                new HttpEntity<>(request, authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
     }
 
+    @DisplayName("DELETE /api/v1/members/me (회원 탈퇴)")
+    @Nested
+    class Withdraw {
+
+        @DisplayName("비밀번호가 일치하면, 200 OK 응답을 받고 이후 로그인이 차단된다.")
+        @Test
+        void returnsOk_andBlocksLogin_whenPasswordMatches() {
+            // arrange
+            String loginId = "testUser1";
+            String password = "Test1234!";
+            registerMember(loginId, password);
+
+            MemberV1Dto.WithdrawRequest request = new MemberV1Dto.WithdrawRequest(password);
+
+            // act
+            ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.DELETE,
+                new HttpEntity<>(request, authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert - 탈퇴 성공
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+
+            // assert - 탈퇴 후 로그인 시도 시 UNAUTHORIZED
+            ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> meResponse = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.GET,
+                new HttpEntity<>(authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(meResponse.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        }
+
+        @DisplayName("비밀번호가 일치하지 않으면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenPasswordDoesNotMatch() {
+            // arrange
+            String loginId = "testUser2";
+            String password = "Test1234!";
+            registerMember(loginId, password);
+
+            MemberV1Dto.WithdrawRequest request = new MemberV1Dto.WithdrawRequest("WrongPass1!");
+
+            // act
+            ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.DELETE,
+                new HttpEntity<>(request, authHeaders(loginId, password)),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @DisplayName("탈퇴 후 동일 loginId로 재가입하면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenReRegisterWithSameLoginId() {
+            // arrange - 가입 후 탈퇴
+            String loginId = "testUser3";
+            String password = "Test1234!";
+            registerMember(loginId, password);
+
+            testRestTemplate.exchange(
+                ENDPOINT_ME,
+                HttpMethod.DELETE,
+                new HttpEntity<>(new MemberV1Dto.WithdrawRequest(password), authHeaders(loginId, password)),
+                new ParameterizedTypeReference<ApiResponse<Void>>() {}
+            );
+
+            // act - 동일 loginId로 재가입
+            MemberV1Dto.RegisterRequest reRegisterRequest = new MemberV1Dto.RegisterRequest(
+                loginId, "NewPass5678!", "김철수",
+                LocalDate.of(1995, 3, 10), Gender.FEMALE, "new@example.com", null
+            );
+            ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
+                ENDPOINT_REGISTER,
+                HttpMethod.POST,
+                new HttpEntity<>(reRegisterRequest),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+    }
+
+    private void registerMember(String loginId, String password) {
+        MemberV1Dto.RegisterRequest registerRequest = new MemberV1Dto.RegisterRequest(
+            loginId,
+            password,
+            "홍길동",
+            LocalDate.of(1990, 1, 15),
+            Gender.MALE,
+            loginId + "@example.com",
+            null
+        );
+        testRestTemplate.exchange(
+            ENDPOINT_REGISTER,
+            HttpMethod.POST,
+            new HttpEntity<>(registerRequest),
+            new ParameterizedTypeReference<ApiResponse<MemberV1Dto.MemberResponse>>() {}
+        );
+    }
+
+    private HttpHeaders authHeaders(String loginId, String password) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.set(HEADER_LOGIN_ID, loginId);
+        headers.set(HEADER_LOGIN_PW, password);
+        return headers;
+    }
 }

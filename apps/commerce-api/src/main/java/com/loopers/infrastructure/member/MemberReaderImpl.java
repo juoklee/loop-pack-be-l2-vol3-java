@@ -19,6 +19,6 @@ public class MemberReaderImpl implements MemberReader {
 
     @Override
     public Optional<Member> findByLoginId(String loginId) {
-        return memberJpaRepository.findByLoginId(loginId);
+        return memberJpaRepository.findByLoginIdAndDeletedAtIsNull(loginId);
     }
 }

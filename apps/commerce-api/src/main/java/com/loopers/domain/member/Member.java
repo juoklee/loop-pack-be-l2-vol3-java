@@ -5,6 +5,8 @@ import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 
 import java.time.LocalDate;
@@ -18,26 +20,36 @@ public class Member extends BaseEntity {
     private String password;
     private String name;
     private LocalDate birthDate;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Gender gender;
+
     private String email;
+    private String phone;
 
     protected Member() {}
 
     private Member(String loginId, String password, String name,
-                   LocalDate birthDate, String email) {
+                   LocalDate birthDate, Gender gender, String email, String phone) {
         this.loginId = loginId;
         this.password = password;
         this.name = name;
         this.birthDate = birthDate;
+        this.gender = gender;
         this.email = email;
+        this.phone = phone;
     }
 
     public static Member create(String loginId, String rawPassword,
                                 String name, LocalDate birthDate,
-                                String email, PasswordEncoder encoder) {
+                                Gender gender, String email, String phone,
+                                PasswordEncoder encoder) {
         validateNotBlank(loginId, "로그인ID는 필수입니다.");
         validateNotBlank(rawPassword, "비밀번호는 필수입니다.");
         validateNotBlank(name, "이름은 필수입니다.");
         validateNotNull(birthDate, "생년월일은 필수입니다.");
+        validateNotNull(gender, "성별은 필수입니다.");
         validateNotBlank(email, "이메일은 필수입니다.");
 
         validateLoginId(loginId);
@@ -45,9 +57,13 @@ public class Member extends BaseEntity {
         String normalizedName = normalizeName(name);
         validateName(normalizedName);
         validateEmail(email);
+        if (phone != null && !phone.isBlank()) {
+            validatePhone(phone);
+        }
 
         String encodedPassword = encoder.encode(rawPassword);
-        return new Member(loginId, encodedPassword, normalizedName, birthDate, email);
+        return new Member(loginId, encodedPassword, normalizedName, birthDate, gender, email,
+            phone != null && !phone.isBlank() ? phone : null);
     }
 
     private static void validateNotNull(Object value, String message) {
@@ -100,32 +116,51 @@ public class Member extends BaseEntity {
         }
     }
 
+    private static void validatePhone(String phone) {
+        if (!phone.matches("^010-\\d{4}-\\d{4}$")) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "전화번호 형식이 올바르지 않습니다. (010-XXXX-XXXX)");
+        }
+    }
+
+    public void updatePhone(String phone) {
+        if (phone != null && !phone.isBlank()) {
+            validatePhone(phone);
+            this.phone = phone;
+        } else {
+            this.phone = null;
+        }
+    }
+
+    public void withdraw(String rawPassword, PasswordEncoder encoder) {
+        validateNotBlank(rawPassword, "비밀번호는 필수입니다.");
+        if (!encoder.matches(rawPassword, this.password)) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "비밀번호가 일치하지 않습니다.");
+        }
+        this.delete();
+    }
+
     public void changePassword(String currentPassword, String newRawPassword,
                                PasswordEncoder encoder) {
         validateNotBlank(currentPassword, "현재 비밀번호는 필수입니다.");
         validateNotBlank(newRawPassword, "새 비밀번호는 필수입니다.");
 
-        // 현재 비밀번호 확인
         if (!encoder.matches(currentPassword, this.password)) {
             throw new CoreException(ErrorType.BAD_REQUEST, "현재 비밀번호가 일치하지 않습니다.");
         }
-        // 새 비밀번호가 현재와 동일한지 확인
         if (encoder.matches(newRawPassword, this.password)) {
             throw new CoreException(ErrorType.BAD_REQUEST, "새 비밀번호는 현재 비밀번호와 달라야 합니다.");
         }
-        // 새 비밀번호 규칙 검증
         validatePassword(newRawPassword, this.birthDate);
-        // 비밀번호 변경
         this.password = encoder.encode(newRawPassword);
+    }
+
+    public boolean verifyPassword(String rawPassword, PasswordEncoder encoder) {
+        return encoder.matches(rawPassword, this.password);
     }
 
     // Getter
     public String getLoginId() {
         return loginId;
-    }
-
-    public String getPassword() {
-        return password;
     }
 
     public String getName() {
@@ -136,7 +171,15 @@ public class Member extends BaseEntity {
         return birthDate;
     }
 
+    public Gender getGender() {
+        return gender;
+    }
+
     public String getEmail() {
         return email;
+    }
+
+    public String getPhone() {
+        return phone;
     }
 }

@@ -1,7 +1,6 @@
 package com.loopers.support.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberReader;
 import com.loopers.domain.member.PasswordEncoder;
 import com.loopers.interfaces.api.ApiResponse;
@@ -47,17 +46,17 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         }
 
         // 회원 조회 및 비밀번호 검증
-        Member member = memberReader.findByLoginId(loginId)
-            .filter(m -> passwordEncoder.matches(loginPw, m.getPassword()))
-            .orElse(null);
+        boolean authenticated = memberReader.findByLoginId(loginId)
+            .filter(m -> m.verifyPassword(loginPw, passwordEncoder))
+            .isPresent();
 
-        if (member == null) {
+        if (!authenticated) {
             sendUnauthorizedResponse(response);
             return;
         }
 
-        // 인증 성공 - 회원 정보를 request에 저장
-        request.setAttribute("authenticatedMember", member);
+        // 인증 성공 - loginId를 request에 저장
+        request.setAttribute("authenticatedLoginId", loginId);
         filterChain.doFilter(request, response);
     }
 

@@ -26,7 +26,7 @@ class MemberServiceTest {
     @BeforeEach
     void setUp() {
         fakeMemberReader = new FakeMemberReader();
-        fakeMemberRepository = new FakeMemberRepository();
+        fakeMemberRepository = new FakeMemberRepository(fakeMemberReader);
         stubPasswordEncoder = new StubPasswordEncoder();
         memberService = new MemberService(fakeMemberReader, fakeMemberRepository, stubPasswordEncoder);
     }
@@ -46,7 +46,7 @@ class MemberServiceTest {
             CoreException exception = assertThrows(CoreException.class, () -> {
                 memberService.register(
                     existingLoginId, "Test1234!", "홍길동",
-                    LocalDate.of(1990, 1, 15), "test@example.com"
+                    LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null
                 );
             });
 
@@ -65,25 +65,89 @@ class MemberServiceTest {
             String email = "test@example.com";
 
             // Act
-            Member member = memberService.register(loginId, password, name, birthDate, email);
+            Member member = memberService.register(loginId, password, name, birthDate, Gender.MALE, email, null);
 
             // Assert
             assertAll(
                 () -> assertThat(member.getLoginId()).isEqualTo(loginId),
-                () -> assertThat(member.getPassword()).isEqualTo("encoded_" + password),
+                () -> assertThat(member.verifyPassword(password, stubPasswordEncoder)).isTrue(),
                 () -> assertThat(member.getName()).isEqualTo(name),
                 () -> assertThat(member.getBirthDate()).isEqualTo(birthDate),
+                () -> assertThat(member.getGender()).isEqualTo(Gender.MALE),
                 () -> assertThat(member.getEmail()).isEqualTo(email)
             );
+        }
+    }
+
+    @DisplayName("전화번호 수정 시, ")
+    @Nested
+    class UpdatePhone {
+
+        @DisplayName("유효한 전화번호로 수정하면, 정상적으로 변경된다.")
+        @Test
+        void updatesPhone_whenValidFormat() {
+            // Arrange
+            Member member = memberService.register(
+                "testUser", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null
+            );
+
+            // Act
+            memberService.updatePhone("testUser", "010-9999-8888");
+
+            // Assert
+            assertThat(member.getPhone()).isEqualTo("010-9999-8888");
+        }
+    }
+
+    @DisplayName("회원 탈퇴 시, ")
+    @Nested
+    class Withdraw {
+
+        @DisplayName("비밀번호가 일치하면, soft delete 처리된다.")
+        @Test
+        void deleteMember_whenPasswordMatches() {
+            // Arrange
+            Member member = memberService.register(
+                "testUser", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null
+            );
+
+            // Act
+            memberService.withdraw("testUser", "Test1234!");
+
+            // Assert
+            assertThat(member.getDeletedAt()).isNotNull();
+        }
+
+        @DisplayName("비밀번호가 일치하지 않으면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPasswordDoesNotMatch() {
+            // Arrange
+            memberService.register(
+                "testUser", "Test1234!", "홍길동",
+                LocalDate.of(1990, 1, 15), Gender.MALE, "test@example.com", null
+            );
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                memberService.withdraw("testUser", "WrongPass1!");
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
     }
 
     // Fake 구현체
     static class FakeMemberReader implements MemberReader {
         private final Map<String, Boolean> existingLoginIds = new HashMap<>();
+        private final Map<String, Member> members = new HashMap<>();
 
         void addExistingLoginId(String loginId) {
             existingLoginIds.put(loginId, true);
+        }
+
+        void addMember(Member member) {
+            members.put(member.getLoginId(), member);
         }
 
         @Override
@@ -93,17 +157,23 @@ class MemberServiceTest {
 
         @Override
         public Optional<Member> findByLoginId(String loginId) {
-            return Optional.empty();
+            return Optional.ofNullable(members.get(loginId));
         }
     }
 
     static class FakeMemberRepository implements MemberRepository {
         private final Map<Long, Member> members = new HashMap<>();
+        private final FakeMemberReader fakeMemberReader;
         private long idSequence = 1L;
+
+        FakeMemberRepository(FakeMemberReader fakeMemberReader) {
+            this.fakeMemberReader = fakeMemberReader;
+        }
 
         @Override
         public Member save(Member member) {
             members.put(idSequence++, member);
+            fakeMemberReader.addMember(member);
             return member;
         }
     }
