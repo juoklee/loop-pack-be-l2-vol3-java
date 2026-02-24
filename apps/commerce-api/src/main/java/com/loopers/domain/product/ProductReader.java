@@ -9,5 +9,6 @@ import java.util.Optional;
 public interface ProductReader {
     Optional<Product> findById(Long id);
     Page<Product> findAll(String keyword, Long brandId, ProductSortType sort, Pageable pageable);
+    List<Product> findAllByIds(List<Long> ids);
     List<Product> findAllByBrandId(Long brandId);
 }

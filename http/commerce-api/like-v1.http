@@ -1,0 +1,79 @@
+@baseUrl = http://localhost:8080
+
+###############################################
+# 상품 좋아요 토글 API
+###############################################
+
+### 상품 좋아요 토글 (정상 - 첫 좋아요 → liked=true)
+POST {{baseUrl}}/api/v1/products/1/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 상품 좋아요 토글 (정상 - 다시 토글 → liked=false)
+POST {{baseUrl}}/api/v1/products/1/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 상품 좋아요 토글 (존재하지 않는 상품 - 404)
+POST {{baseUrl}}/api/v1/products/9999/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 상품 좋아요 토글 (인증 없음 - 401)
+POST {{baseUrl}}/api/v1/products/1/likes
+
+###############################################
+# 브랜드 좋아요 토글 API
+###############################################
+
+### 브랜드 좋아요 토글 (정상 - 첫 좋아요 → liked=true)
+POST {{baseUrl}}/api/v1/brands/1/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 브랜드 좋아요 토글 (정상 - 다시 토글 → liked=false)
+POST {{baseUrl}}/api/v1/brands/1/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 브랜드 좋아요 토글 (존재하지 않는 브랜드 - 404)
+POST {{baseUrl}}/api/v1/brands/9999/likes
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 브랜드 좋아요 토글 (인증 없음 - 401)
+POST {{baseUrl}}/api/v1/brands/1/likes
+
+###############################################
+# 내 상품 좋아요 목록 조회 API
+###############################################
+
+### 내 상품 좋아요 목록 조회 (정상)
+GET {{baseUrl}}/api/v1/members/me/likes/products
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 내 상품 좋아요 목록 조회 (페이징)
+GET {{baseUrl}}/api/v1/members/me/likes/products?page=0&size=10
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 내 상품 좋아요 목록 조회 (인증 없음 - 401)
+GET {{baseUrl}}/api/v1/members/me/likes/products
+
+###############################################
+# 내 브랜드 좋아요 목록 조회 API
+###############################################
+
+### 내 브랜드 좋아요 목록 조회 (정상)
+GET {{baseUrl}}/api/v1/members/me/likes/brands
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 내 브랜드 좋아요 목록 조회 (페이징)
+GET {{baseUrl}}/api/v1/members/me/likes/brands?page=0&size=10
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 내 브랜드 좋아요 목록 조회 (인증 없음 - 401)
+GET {{baseUrl}}/api/v1/members/me/likes/brands

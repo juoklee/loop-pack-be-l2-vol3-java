@@ -73,6 +73,11 @@ public class ProductReaderImpl implements ProductReader {
     }
 
     @Override
+    public List<Product> findAllByIds(List<Long> ids) {
+        return productJpaRepository.findAllByIdInAndDeletedAtIsNull(ids);
+    }
+
+    @Override
     public List<Product> findAllByBrandId(Long brandId) {
         return productJpaRepository.findAllByBrandIdAndDeletedAtIsNull(brandId);
     }

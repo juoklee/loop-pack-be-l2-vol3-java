@@ -258,6 +258,14 @@ class ProductServiceTest {
         }
 
         @Override
+        public List<Product> findAllByIds(List<Long> ids) {
+            return ids.stream()
+                .map(products::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        }
+
+        @Override
         public List<Product> findAllByBrandId(Long brandId) {
             return productsByBrandId.getOrDefault(brandId, List.of());
         }

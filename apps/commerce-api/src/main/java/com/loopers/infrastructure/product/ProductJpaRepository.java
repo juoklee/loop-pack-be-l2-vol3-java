@@ -8,5 +8,6 @@ import java.util.Optional;
 
 public interface ProductJpaRepository extends JpaRepository<Product, Long> {
     Optional<Product> findByIdAndDeletedAtIsNull(Long id);
+    List<Product> findAllByIdInAndDeletedAtIsNull(List<Long> ids);
     List<Product> findAllByBrandIdAndDeletedAtIsNull(Long brandId);
 }

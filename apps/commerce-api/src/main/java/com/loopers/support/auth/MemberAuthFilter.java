@@ -79,6 +79,16 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         }
 
         // /api/v1/members/** 경로는 인증 필요
-        return path.startsWith("/api/v1/members/");
+        if (path.startsWith("/api/v1/members/")) {
+            return true;
+        }
+
+        // POST /api/v1/products/{id}/likes, POST /api/v1/brands/{id}/likes 인증 필요
+        if ("POST".equals(method) && path.endsWith("/likes")
+            && (path.startsWith("/api/v1/products/") || path.startsWith("/api/v1/brands/"))) {
+            return true;
+        }
+
+        return false;
     }
 }
