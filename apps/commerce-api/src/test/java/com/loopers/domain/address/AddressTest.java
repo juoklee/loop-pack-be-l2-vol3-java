@@ -161,6 +161,37 @@ class AddressTest {
         }
     }
 
+    @DisplayName("배송지를 삭제할 때, ")
+    @Nested
+    class Delete {
+
+        @DisplayName("비기본 배송지이면, 정상적으로 삭제된다.")
+        @Test
+        void deletesAddress_whenNotDefault() {
+            // Arrange
+            Address address = Address.create(1L, "집", "홍길동", "010-1234-5678",
+                "12345", "서울시 강남구", null, false);
+
+            // Act
+            address.delete();
+
+            // Assert
+            assertThat(address.getDeletedAt()).isNotNull();
+        }
+
+        @DisplayName("기본 배송지이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenDefaultAddress() {
+            // Arrange
+            Address address = Address.create(1L, "집", "홍길동", "010-1234-5678",
+                "12345", "서울시 강남구", null, true);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, address::delete);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
     @DisplayName("기본 배송지를 설정할 때, ")
     @Nested
     class SetDefault {

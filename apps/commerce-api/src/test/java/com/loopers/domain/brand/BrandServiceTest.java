@@ -199,8 +199,21 @@ class BrandServiceTest {
         }
 
         @Override
+        public boolean existsById(Long id) {
+            return brands.containsKey(id);
+        }
+
+        @Override
         public boolean existsByName(String name) {
             return existingNames.containsKey(name);
+        }
+
+        @Override
+        public List<Brand> findAllByIds(List<Long> ids) {
+            return ids.stream()
+                .map(brands::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
         }
 
         @Override

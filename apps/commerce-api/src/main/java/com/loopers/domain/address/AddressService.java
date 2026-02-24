@@ -51,9 +51,6 @@ public class AddressService {
     @Transactional
     public void delete(Long id, Long memberId) {
         Address address = getAddress(id, memberId);
-        if (address.getIsDefault()) {
-            throw new CoreException(ErrorType.BAD_REQUEST, "기본 배송지는 삭제할 수 없습니다. 다른 배송지를 기본으로 변경 후 삭제해 주세요.");
-        }
         address.delete();
     }
 

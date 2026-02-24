@@ -73,6 +73,14 @@ public class Address extends BaseEntity {
         this.address2 = address2;
     }
 
+    @Override
+    public void delete() {
+        if (this.isDefault) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "기본 배송지는 삭제할 수 없습니다. 다른 배송지를 기본으로 변경 후 삭제해 주세요.");
+        }
+        super.delete();
+    }
+
     public void setDefault(boolean isDefault) {
         this.isDefault = isDefault;
     }

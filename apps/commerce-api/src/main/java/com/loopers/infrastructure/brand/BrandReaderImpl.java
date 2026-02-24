@@ -7,6 +7,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -20,8 +21,18 @@ public class BrandReaderImpl implements BrandReader {
     }
 
     @Override
+    public boolean existsById(Long id) {
+        return brandJpaRepository.existsByIdAndDeletedAtIsNull(id);
+    }
+
+    @Override
     public boolean existsByName(String name) {
         return brandJpaRepository.existsByNameAndDeletedAtIsNull(name);
+    }
+
+    @Override
+    public List<Brand> findAllByIds(List<Long> ids) {
+        return brandJpaRepository.findAllByIdInAndDeletedAtIsNull(ids);
     }
 
     @Override
