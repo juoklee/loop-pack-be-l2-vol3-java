@@ -2,7 +2,7 @@ package com.loopers.interfaces.api.brand;
 
 import com.loopers.application.brand.BrandFacade;
 import com.loopers.application.brand.BrandInfo;
-import com.loopers.domain.PageResult;
+import com.loopers.application.PagedInfo;
 import com.loopers.interfaces.api.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -25,7 +25,7 @@ public class BrandV1Controller {
         @RequestParam(required = false) String keyword,
         @PageableDefault(size = 20) Pageable pageable
     ) {
-        PageResult<BrandInfo> brands = brandFacade.getBrands(keyword, pageable.getPageNumber(), pageable.getPageSize());
+        PagedInfo<BrandInfo> brands = brandFacade.getBrands(keyword, pageable.getPageNumber(), pageable.getPageSize());
         return ApiResponse.success(BrandV1Dto.BrandListResponse.from(brands));
     }
 

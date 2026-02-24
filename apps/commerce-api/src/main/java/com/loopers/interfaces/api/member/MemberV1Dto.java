@@ -1,7 +1,6 @@
 package com.loopers.interfaces.api.member;
 
 import com.loopers.application.member.MemberInfo;
-import com.loopers.domain.member.Gender;
 
 import java.time.LocalDate;
 
@@ -12,7 +11,7 @@ public class MemberV1Dto {
         String password,
         String name,
         LocalDate birthDate,
-        Gender gender,
+        String gender,
         String email,
         String phone
     ) {}
@@ -37,7 +36,7 @@ public class MemberV1Dto {
             String loginId,
             String name,
             LocalDate birthDate,
-            Gender gender,
+            String gender,
             String email,
             String phone
         ) {}

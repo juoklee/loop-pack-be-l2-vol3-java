@@ -1,5 +1,6 @@
 package com.loopers.application.product;
 
+import com.loopers.application.PagedInfo;
 import com.loopers.application.brand.BrandInfo;
 import com.loopers.domain.PageResult;
 import com.loopers.domain.brand.Brand;
@@ -36,9 +37,10 @@ public class ProductFacade {
         return ProductInfo.of(product, BrandInfo.from(brand));
     }
 
-    public PageResult<ProductInfo> getProducts(String keyword, Long brandId, ProductSortType sort, int page, int size) {
-        PageResult<Product> result = productService.getProducts(keyword, brandId, sort, page, size);
-        return new PageResult<>(
+    public PagedInfo<ProductInfo> getProducts(String keyword, Long brandId, String sort, int page, int size) {
+        ProductSortType sortType = ProductSortType.valueOf(sort);
+        PageResult<Product> result = productService.getProducts(keyword, brandId, sortType, page, size);
+        return new PagedInfo<>(
             result.content().stream().map(product -> {
                 Brand brand = brandService.getBrand(product.getBrandId());
                 return ProductInfo.of(product, BrandInfo.from(brand));

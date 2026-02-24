@@ -1,5 +1,6 @@
 package com.loopers.application.brand;
 
+import com.loopers.application.PagedInfo;
 import com.loopers.domain.PageResult;
 import com.loopers.domain.brand.BrandService;
 import com.loopers.domain.brand.Brand;
@@ -25,9 +26,9 @@ public class BrandFacade {
         return BrandInfo.from(brand);
     }
 
-    public PageResult<BrandInfo> getBrands(String keyword, int page, int size) {
+    public PagedInfo<BrandInfo> getBrands(String keyword, int page, int size) {
         PageResult<Brand> result = brandService.getBrands(keyword, page, size);
-        return new PageResult<>(
+        return new PagedInfo<>(
             result.content().stream().map(BrandInfo::from).toList(),
             result.totalElements(),
             result.totalPages(),

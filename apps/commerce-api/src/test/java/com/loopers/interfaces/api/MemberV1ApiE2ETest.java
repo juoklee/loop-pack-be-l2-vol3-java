@@ -1,6 +1,5 @@
 package com.loopers.interfaces.api;
 
-import com.loopers.domain.member.Gender;
 import com.loopers.infrastructure.member.MemberJpaRepository;
 import com.loopers.interfaces.api.member.MemberV1Dto;
 import com.loopers.utils.DatabaseCleanUp;
@@ -65,7 +64,7 @@ class MemberV1ApiE2ETest {
                 "Test1234!",
                 "홍길동",
                 LocalDate.of(1990, 1, 15),
-                Gender.MALE,
+                "MALE",
                 "test@example.com",
                 "010-1234-5678"
             );
@@ -83,7 +82,7 @@ class MemberV1ApiE2ETest {
             assertAll(
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED),
                 () -> assertThat(response.getBody().data().member().loginId()).isEqualTo("testUser1"),
-                () -> assertThat(response.getBody().data().member().gender()).isEqualTo(Gender.MALE),
+                () -> assertThat(response.getBody().data().member().gender()).isEqualTo("MALE"),
                 () -> assertThat(response.getBody().data().member().phone()).isEqualTo("010-1234-5678"),
                 () -> assertThat(memberJpaRepository.existsByLoginId("testUser1")).isTrue()
             );
@@ -101,7 +100,7 @@ class MemberV1ApiE2ETest {
                 "Test5678!",
                 "김철수",
                 LocalDate.of(1985, 5, 20),
-                Gender.MALE,
+                "MALE",
                 "second@example.com",
                 null
             );
@@ -127,7 +126,7 @@ class MemberV1ApiE2ETest {
                 "Test1234!",
                 "홍길동",
                 LocalDate.of(1990, 1, 15),
-                Gender.MALE,
+                "MALE",
                 "invalid-email",
                 null
             );
@@ -175,7 +174,7 @@ class MemberV1ApiE2ETest {
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
                 () -> assertThat(response.getBody().data().member().loginId()).isEqualTo(loginId),
                 () -> assertThat(response.getBody().data().member().name()).isEqualTo("홍길*"),
-                () -> assertThat(response.getBody().data().member().gender()).isEqualTo(Gender.MALE),
+                () -> assertThat(response.getBody().data().member().gender()).isEqualTo("MALE"),
                 () -> assertThat(response.getBody().data().member().email()).isEqualTo(loginId + "@example.com")
             );
         }
@@ -525,7 +524,7 @@ class MemberV1ApiE2ETest {
             // act - 동일 loginId로 재가입
             MemberV1Dto.RegisterRequest reRegisterRequest = new MemberV1Dto.RegisterRequest(
                 loginId, "NewPass5678!", "김철수",
-                LocalDate.of(1995, 3, 10), Gender.FEMALE, "new@example.com", null
+                LocalDate.of(1995, 3, 10), "FEMALE", "new@example.com", null
             );
             ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
                 ENDPOINT_REGISTER,
@@ -545,7 +544,7 @@ class MemberV1ApiE2ETest {
             password,
             "홍길동",
             LocalDate.of(1990, 1, 15),
-            Gender.MALE,
+            "MALE",
             loginId + "@example.com",
             null
         );

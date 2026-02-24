@@ -26,7 +26,7 @@ class ArchitectureTest {
 
             .whereLayer("Interfaces").mayOnlyBeAccessedByLayers("Support")
             .whereLayer("Application").mayOnlyBeAccessedByLayers("Interfaces")
-            .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure", "Interfaces", "Support")
+            .whereLayer("Domain").mayOnlyBeAccessedByLayers("Application", "Infrastructure", "Support")
             .whereLayer("Infrastructure").mayNotBeAccessedByAnyLayer();
 
     // — 2. 도메인 간 순환 참조 방지 —
@@ -44,12 +44,4 @@ class ArchitectureTest {
                     "jakarta.persistence..",
                     "org.springframework.data.."
             );
-
-    // — 4. Interfaces 계층은 Domain Entity에 직접 의존하지 않음 —
-    // enum, VO 등 값 타입은 허용하되, @Entity 클래스는 차단
-    @ArchTest
-    static final ArchRule interfaces_should_not_depend_on_domain_entities = noClasses()
-            .that().resideInAPackage("..interfaces..")
-            .should().dependOnClassesThat()
-            .areAnnotatedWith("jakarta.persistence.Entity");
 }

@@ -1,7 +1,7 @@
 package com.loopers.interfaces.api.brand;
 
 import com.loopers.application.brand.BrandInfo;
-import com.loopers.domain.PageResult;
+import com.loopers.application.PagedInfo;
 
 public class BrandV1Dto {
 
@@ -48,7 +48,7 @@ public class BrandV1Dto {
             int totalPages
         ) {}
 
-        public static BrandListResponse from(PageResult<BrandInfo> result) {
+        public static BrandListResponse from(PagedInfo<BrandInfo> result) {
             var brandDtos = result.content().stream()
                 .map(info -> new BrandResponse.BrandDto(
                     info.id(),

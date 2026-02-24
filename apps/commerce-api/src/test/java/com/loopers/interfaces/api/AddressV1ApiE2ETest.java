@@ -1,6 +1,5 @@
 package com.loopers.interfaces.api;
 
-import com.loopers.domain.member.Gender;
 import com.loopers.interfaces.api.address.AddressV1Dto;
 import com.loopers.interfaces.api.member.MemberV1Dto;
 import com.loopers.utils.DatabaseCleanUp;
@@ -395,7 +394,7 @@ class AddressV1ApiE2ETest {
     private void registerMember(String loginId, String password) {
         MemberV1Dto.RegisterRequest request = new MemberV1Dto.RegisterRequest(
             loginId, password, "홍길동", LocalDate.of(1990, 1, 15),
-            Gender.MALE, loginId + "@example.com", null
+            "MALE", loginId + "@example.com", null
         );
         testRestTemplate.exchange(
             ENDPOINT_MEMBERS,

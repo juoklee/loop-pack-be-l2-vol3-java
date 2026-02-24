@@ -15,8 +15,9 @@ public class MemberFacade {
     private final MemberService memberService;
 
     public MemberInfo register(String loginId, String rawPassword, String name,
-                               LocalDate birthDate, Gender gender, String email, String phone) {
-        Member member = memberService.register(loginId, rawPassword, name, birthDate, gender, email, phone);
+                               LocalDate birthDate, String gender, String email, String phone) {
+        Gender genderEnum = Gender.valueOf(gender);
+        Member member = memberService.register(loginId, rawPassword, name, birthDate, genderEnum, email, phone);
         return MemberInfo.from(member);
     }
 

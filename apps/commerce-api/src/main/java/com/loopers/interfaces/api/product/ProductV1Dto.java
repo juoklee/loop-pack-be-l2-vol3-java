@@ -1,7 +1,7 @@
 package com.loopers.interfaces.api.product;
 
 import com.loopers.application.product.ProductInfo;
-import com.loopers.domain.PageResult;
+import com.loopers.application.PagedInfo;
 
 import java.util.List;
 
@@ -74,7 +74,7 @@ public class ProductV1Dto {
     ) {
         public record PageInfo(int number, int size, long totalElements, int totalPages) {}
 
-        public static ProductListResponse from(PageResult<ProductInfo> result) {
+        public static ProductListResponse from(PagedInfo<ProductInfo> result) {
             var productDtos = result.content().stream()
                 .map(info -> new ProductResponse.ProductDto(
                     info.id(),
