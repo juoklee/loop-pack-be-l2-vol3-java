@@ -1,0 +1,133 @@
+@baseUrl = http://localhost:8080
+
+###############################################
+# 배송지 등록 API
+###############################################
+
+### 배송지 등록 (정상 - 첫 등록, isDefault=true)
+POST {{baseUrl}}/api/v1/members/me/addresses
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "label": "집",
+  "recipientName": "홍길동",
+  "recipientPhone": "010-1234-5678",
+  "zipCode": "12345",
+  "address1": "서울시 강남구 테헤란로 123",
+  "address2": "101동 202호"
+}
+
+### 배송지 등록 (정상 - 두 번째, isDefault=false)
+POST {{baseUrl}}/api/v1/members/me/addresses
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "label": "회사",
+  "recipientName": "홍길동",
+  "recipientPhone": "010-1234-5678",
+  "zipCode": "54321",
+  "address1": "서울시 서초구 서초대로 456",
+  "address2": null
+}
+
+### 배송지 등록 (필수 필드 누락 - label 없음 - 400)
+POST {{baseUrl}}/api/v1/members/me/addresses
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "recipientName": "홍길동",
+  "recipientPhone": "010-1234-5678",
+  "zipCode": "12345",
+  "address1": "서울시 강남구 테헤란로 123"
+}
+
+### 배송지 등록 (인증 없음 - 401)
+POST {{baseUrl}}/api/v1/members/me/addresses
+Content-Type: application/json
+
+{
+  "label": "집",
+  "recipientName": "홍길동",
+  "recipientPhone": "010-1234-5678",
+  "zipCode": "12345",
+  "address1": "서울시 강남구 테헤란로 123"
+}
+
+###############################################
+# 배송지 목록 조회 API
+###############################################
+
+### 배송지 목록 조회 (정상)
+GET {{baseUrl}}/api/v1/members/me/addresses
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 배송지 목록 조회 (인증 없음 - 401)
+GET {{baseUrl}}/api/v1/members/me/addresses
+
+###############################################
+# 배송지 수정 API
+###############################################
+
+### 배송지 수정 (정상 - addressId를 실제 값으로 교체)
+PUT {{baseUrl}}/api/v1/members/me/addresses/1
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "label": "새집",
+  "recipientName": "홍길동",
+  "recipientPhone": "010-9999-9999",
+  "zipCode": "67890",
+  "address1": "서울시 송파구 올림픽로 789",
+  "address2": "301동 402호"
+}
+
+### 배송지 수정 (존재하지 않는 배송지 - 404)
+PUT {{baseUrl}}/api/v1/members/me/addresses/9999
+Content-Type: application/json
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+{
+  "label": "새집",
+  "recipientName": "홍길동",
+  "recipientPhone": "010-9999-9999",
+  "zipCode": "67890",
+  "address1": "서울시 송파구 올림픽로 789"
+}
+
+###############################################
+# 배송지 삭제 API
+###############################################
+
+### 배송지 삭제 (정상 - 비기본 배송지, addressId를 실제 값으로 교체)
+DELETE {{baseUrl}}/api/v1/members/me/addresses/2
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 배송지 삭제 (기본 배송지 삭제 시도 - 400)
+DELETE {{baseUrl}}/api/v1/members/me/addresses/1
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+###############################################
+# 기본 배송지 설정 API
+###############################################
+
+### 기본 배송지 설정 (정상 - addressId를 실제 값으로 교체)
+PATCH {{baseUrl}}/api/v1/members/me/addresses/2/default
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
+
+### 기본 배송지 설정 (존재하지 않는 배송지 - 404)
+PATCH {{baseUrl}}/api/v1/members/me/addresses/9999/default
+X-Loopers-LoginId: testUser1
+X-Loopers-LoginPw: Test1234!
