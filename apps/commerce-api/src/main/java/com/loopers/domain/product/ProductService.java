@@ -57,6 +57,20 @@ public class ProductService {
         }
     }
 
+    @Transactional
+    public int increaseLikeCount(Long id) {
+        Product product = getProduct(id);
+        product.increaseLikeCount();
+        return product.getLikeCount();
+    }
+
+    @Transactional
+    public int decreaseLikeCount(Long id) {
+        Product product = getProduct(id);
+        product.decreaseLikeCount();
+        return product.getLikeCount();
+    }
+
     @Transactional(readOnly = true)
     public PageResult<Product> getProducts(String keyword, Long brandId, ProductSortType sort, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);

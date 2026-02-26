@@ -310,6 +310,34 @@ class ProductTest {
         }
     }
 
+    @DisplayName("주문 수량을 검증할 때, ")
+    @Nested
+    class ValidateOrderQuantity {
+
+        @DisplayName("최대 주문 수량 이하이면, 예외가 발생하지 않는다.")
+        @Test
+        void doesNotThrow_whenQuantityIsWithinLimit() {
+            // Arrange
+            Product product = Product.create(1L, "에어맥스 90", "설명", 139000L, 100, 5);
+
+            // Act & Assert (no exception)
+            product.validateOrderQuantity(5);
+        }
+
+        @DisplayName("최대 주문 수량을 초과하면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenQuantityExceedsMax() {
+            // Arrange
+            Product product = Product.create(1L, "에어맥스 90", "설명", 139000L, 100, 5);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                product.validateOrderQuantity(6)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
     @DisplayName("좋아요 수를 관리할 때, ")
     @Nested
     class LikeCount {

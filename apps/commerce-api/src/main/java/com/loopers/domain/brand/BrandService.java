@@ -46,6 +46,20 @@ public class BrandService {
         brandRepository.save(brand);
     }
 
+    @Transactional
+    public int increaseLikeCount(Long id) {
+        Brand brand = getBrand(id);
+        brand.increaseLikeCount();
+        return brand.getLikeCount();
+    }
+
+    @Transactional
+    public int decreaseLikeCount(Long id) {
+        Brand brand = getBrand(id);
+        brand.decreaseLikeCount();
+        return brand.getLikeCount();
+    }
+
     @Transactional(readOnly = true)
     public PageResult<Brand> getBrands(String keyword, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);

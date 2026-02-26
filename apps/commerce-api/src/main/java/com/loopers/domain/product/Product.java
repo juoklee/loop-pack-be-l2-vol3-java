@@ -88,6 +88,13 @@ public class Product extends BaseEntity {
         }
     }
 
+    public void validateOrderQuantity(int quantity) {
+        if (quantity > this.maxOrderQuantity) {
+            throw new CoreException(ErrorType.BAD_REQUEST,
+                "상품 '" + this.name + "'의 최대 주문 수량(" + this.maxOrderQuantity + ")을 초과했습니다.");
+        }
+    }
+
     private static void validateNotBlank(String value, String message) {
         if (value == null || value.isBlank()) {
             throw new CoreException(ErrorType.BAD_REQUEST, message);

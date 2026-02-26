@@ -9,7 +9,6 @@ import com.loopers.domain.member.MemberService;
 import com.loopers.domain.order.Order;
 import com.loopers.domain.order.OrderItem;
 import com.loopers.domain.order.OrderService;
-import com.loopers.domain.order.OrderStatus;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
 import com.loopers.support.error.CoreException;
@@ -19,7 +18,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -41,15 +39,13 @@ public class OrderFacade {
         Address address = addressReader.findByIdAndMemberId(addressId, memberId)
             .orElseThrow(() -> new CoreException(ErrorType.BAD_REQUEST, "존재하지 않는 배송지입니다."));
 
-        // 2. 요청 검증
-        if (itemRequests == null || itemRequests.isEmpty()) {
-            throw new CoreException(ErrorType.BAD_REQUEST, "주문 항목은 1개 이상이어야 합니다.");
-        }
+        // 2. 주문 항목 검증 + 중복 상품 합산 (도메인 규칙)
+        List<OrderService.OrderItemRequest> serviceRequests = itemRequests.stream()
+            .map(r -> new OrderService.OrderItemRequest(r.productId(), r.quantity()))
+            .toList();
+        Map<Long, Integer> mergedItems = orderService.mergeOrderItems(serviceRequests);
 
-        // 3. 중복 상품 합산
-        Map<Long, Integer> mergedItems = mergeItems(itemRequests);
-
-        // 4. 상품 검증 + 재고 차감 + totalAmount 계산
+        // 3. 상품 검증 + 재고 차감 + totalAmount 계산
         long totalAmount = 0L;
         List<OrderService.OrderItemCommand> commands = new java.util.ArrayList<>();
 
@@ -58,12 +54,7 @@ public class OrderFacade {
             int quantity = entry.getValue();
 
             Product product = productService.getProduct(productId);
-
-            if (quantity > product.getMaxOrderQuantity()) {
-                throw new CoreException(ErrorType.BAD_REQUEST,
-                    "상품 '" + product.getName() + "'의 최대 주문 수량(" + product.getMaxOrderQuantity() + ")을 초과했습니다.");
-            }
-
+            product.validateOrderQuantity(quantity);
             product.decreaseStock(quantity);
 
             totalAmount += product.getPrice() * quantity;
@@ -72,13 +63,13 @@ public class OrderFacade {
             ));
         }
 
-        // 5. 주문 생성
+        // 4. 주문 생성
         Order order = orderService.createOrder(
             memberId, address.getRecipientName(), address.getRecipientPhone(),
             address.getZipCode(), address.getAddress1(), address.getAddress2(), totalAmount
         );
 
-        // 6. 주문 항목 생성
+        // 5. 주문 항목 생성
         List<OrderItem> items = orderService.createOrderItems(order.getId(), commands);
 
         return OrderInfo.of(order, items);
@@ -87,15 +78,11 @@ public class OrderFacade {
     @Transactional
     public void cancelOrder(String loginId, Long orderId) {
         Long memberId = getMemberId(loginId);
-        Order order = orderService.getOrderForMember(orderId, memberId);
 
-        if (order.getStatus() == OrderStatus.CANCELLED) {
-            throw new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다.");
-        }
+        // 소유권 검증 + 취소 상태 체크 + 상태 전이 (도메인 규칙)
+        List<OrderItem> items = orderService.cancelOrder(orderId, memberId);
 
-        order.cancel();
-
-        List<OrderItem> items = orderService.getOrderItems(orderId);
+        // 재고 복원 (cross-domain orchestration)
         for (OrderItem item : items) {
             Product product = productService.getProduct(item.getProductId());
             product.increaseStock(item.getQuantity());
@@ -154,17 +141,6 @@ public class OrderFacade {
             .toList();
 
         return new PagedInfo<>(summaries, result.totalElements(), result.totalPages(), result.page(), result.size());
-    }
-
-    private Map<Long, Integer> mergeItems(List<OrderItemRequest> requests) {
-        Map<Long, Integer> merged = new LinkedHashMap<>();
-        for (OrderItemRequest request : requests) {
-            if (request.quantity() <= 0) {
-                throw new CoreException(ErrorType.BAD_REQUEST, "주문 수량은 0보다 커야 합니다.");
-            }
-            merged.merge(request.productId(), request.quantity(), Integer::sum);
-        }
-        return merged;
     }
 
     private Long getMemberId(String loginId) {

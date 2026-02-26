@@ -11,7 +11,9 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @RequiredArgsConstructor
 @Component
@@ -84,6 +86,35 @@ public class OrderService {
             result.getSize()
         );
     }
+
+    public Map<Long, Integer> mergeOrderItems(List<OrderItemRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "주문 항목은 1개 이상이어야 합니다.");
+        }
+        Map<Long, Integer> merged = new LinkedHashMap<>();
+        for (OrderItemRequest request : requests) {
+            if (request.quantity() <= 0) {
+                throw new CoreException(ErrorType.BAD_REQUEST, "주문 수량은 0보다 커야 합니다.");
+            }
+            merged.merge(request.productId(), request.quantity(), Integer::sum);
+        }
+        return merged;
+    }
+
+    public List<OrderItem> cancelOrder(Long orderId, Long memberId) {
+        Order order = orderReader.findByIdAndMemberId(orderId, memberId)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다."));
+
+        if (order.getStatus() == OrderStatus.CANCELLED) {
+            throw new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다.");
+        }
+
+        order.cancel();
+
+        return orderItemReader.findAllByOrderId(orderId);
+    }
+
+    public record OrderItemRequest(Long productId, int quantity) {}
 
     public record OrderItemCommand(Long productId, String productName, Long productPrice, int quantity) {}
 }

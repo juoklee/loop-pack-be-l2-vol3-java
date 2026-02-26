@@ -14,6 +14,7 @@ import org.springframework.data.domain.Pageable;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -146,6 +147,116 @@ class OrderServiceTest {
         }
     }
 
+    @DisplayName("주문 항목을 병합할 때, ")
+    @Nested
+    class MergeOrderItems {
+
+        @DisplayName("중복 상품은 수량이 합산된다.")
+        @Test
+        void mergesDuplicateProducts() {
+            // Arrange
+            List<OrderService.OrderItemRequest> requests = List.of(
+                new OrderService.OrderItemRequest(1L, 2),
+                new OrderService.OrderItemRequest(2L, 1),
+                new OrderService.OrderItemRequest(1L, 3)
+            );
+
+            // Act
+            Map<Long, Integer> merged = orderService.mergeOrderItems(requests);
+
+            // Assert
+            assertAll(
+                () -> assertThat(merged).hasSize(2),
+                () -> assertThat(merged.get(1L)).isEqualTo(5),
+                () -> assertThat(merged.get(2L)).isEqualTo(1)
+            );
+        }
+
+        @DisplayName("항목이 비어있으면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenEmpty() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.mergeOrderItems(List.of())
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("항목이 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenNull() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.mergeOrderItems(null)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("수량이 0 이하이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenQuantityIsZeroOrNegative() {
+            List<OrderService.OrderItemRequest> requests = List.of(
+                new OrderService.OrderItemRequest(1L, 0)
+            );
+
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.mergeOrderItems(requests)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("주문을 취소할 때, ")
+    @Nested
+    class CancelOrder {
+
+        @DisplayName("정상적으로 취소되고, 주문 항목을 반환한다.")
+        @Test
+        void cancelsOrder_andReturnsItems() {
+            // Arrange
+            Order order = Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L);
+            fakeOrderReader.addOrder(order);
+            OrderItem item = OrderItem.create(order.getId(), 10L, "에어맥스", 100000L, 1);
+            fakeOrderItemReader.addItem(item);
+
+            // Act
+            List<OrderItem> items = orderService.cancelOrder(order.getId(), 1L);
+
+            // Assert
+            assertAll(
+                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED),
+                () -> assertThat(items).hasSize(1)
+            );
+        }
+
+        @DisplayName("이미 취소된 주문이면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenAlreadyCancelled() {
+            // Arrange
+            Order order = Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L);
+            order.cancel();
+            fakeOrderReader.addOrder(order);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.cancelOrder(order.getId(), 1L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+
+        @DisplayName("소유권이 불일치하면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenOwnerMismatch() {
+            // Arrange
+            Order order = Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L);
+            fakeOrderReader.addOrder(order);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.cancelOrder(order.getId(), 999L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+    }
+
     @DisplayName("내 주문 목록을 조회할 때, ")
     @Nested
     class GetMyOrders {
@@ -245,6 +356,8 @@ class OrderServiceTest {
 
     static class FakeOrderItemReader implements OrderItemReader {
         private final List<OrderItem> items = new ArrayList<>();
+
+        void addItem(OrderItem item) { items.add(item); }
 
         @Override
         public List<OrderItem> findAllByOrderId(Long orderId) {

@@ -36,33 +36,29 @@ public class LikeFacade {
     @Transactional
     public LikeToggleInfo toggleProductLike(String loginId, Long productId) {
         Long memberId = getMemberId(loginId);
-        Product product = productService.getProduct(productId);
+        productService.getProduct(productId);
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.PRODUCT, productId);
 
-        if (liked) {
-            product.increaseLikeCount();
-        } else {
-            product.decreaseLikeCount();
-        }
+        int likeCount = liked
+            ? productService.increaseLikeCount(productId)
+            : productService.decreaseLikeCount(productId);
 
-        return new LikeToggleInfo(liked, product.getLikeCount());
+        return new LikeToggleInfo(liked, likeCount);
     }
 
     @Transactional
     public LikeToggleInfo toggleBrandLike(String loginId, Long brandId) {
         Long memberId = getMemberId(loginId);
-        Brand brand = brandService.getBrand(brandId);
+        brandService.getBrand(brandId);
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.BRAND, brandId);
 
-        if (liked) {
-            brand.increaseLikeCount();
-        } else {
-            brand.decreaseLikeCount();
-        }
+        int likeCount = liked
+            ? brandService.increaseLikeCount(brandId)
+            : brandService.decreaseLikeCount(brandId);
 
-        return new LikeToggleInfo(liked, brand.getLikeCount());
+        return new LikeToggleInfo(liked, likeCount);
     }
 
     @Transactional(readOnly = true)
