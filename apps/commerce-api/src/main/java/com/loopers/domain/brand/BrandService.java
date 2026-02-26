@@ -4,9 +4,6 @@ import com.loopers.domain.PageResult;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -62,14 +59,6 @@ public class BrandService {
 
     @Transactional(readOnly = true)
     public PageResult<Brand> getBrands(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Brand> result = brandReader.findAll(keyword, pageable);
-        return new PageResult<>(
-            result.getContent(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.getNumber(),
-            result.getSize()
-        );
+        return brandReader.findAll(keyword, page, size);
     }
 }

@@ -7,9 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -322,19 +320,19 @@ class OrderServiceTest {
         }
 
         @Override
-        public Page<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, Pageable pageable) {
+        public PageResult<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, int page, int size) {
             List<Order> filtered = orders.stream()
                 .filter(o -> o.getMemberId().equals(memberId))
                 .toList();
-            return new PageImpl<>(filtered, pageable, filtered.size());
+            return new PageResult<>(filtered, filtered.size(), 1, page, size);
         }
 
         @Override
-        public Page<Order> findAll(Long memberId, Pageable pageable) {
+        public PageResult<Order> findAll(Long memberId, int page, int size) {
             List<Order> filtered = memberId != null
                 ? orders.stream().filter(o -> o.getMemberId().equals(memberId)).toList()
                 : orders;
-            return new PageImpl<>(filtered, pageable, filtered.size());
+            return new PageResult<>(filtered, filtered.size(), 1, page, size);
         }
     }
 

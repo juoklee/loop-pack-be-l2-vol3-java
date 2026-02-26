@@ -5,9 +5,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -123,11 +121,11 @@ class LikeServiceTest {
         }
 
         @Override
-        public Page<Like> findAllByMemberIdAndTargetType(Long memberId, LikeTargetType targetType, Pageable pageable) {
+        public PageResult<Like> findAllByMemberIdAndTargetType(Long memberId, LikeTargetType targetType, int page, int size) {
             List<Like> filtered = likes.stream()
                 .filter(l -> l.getMemberId().equals(memberId) && l.getTargetType() == targetType)
                 .toList();
-            return new PageImpl<>(filtered, pageable, filtered.size());
+            return new PageResult<>(filtered, filtered.size(), 1, page, size);
         }
     }
 

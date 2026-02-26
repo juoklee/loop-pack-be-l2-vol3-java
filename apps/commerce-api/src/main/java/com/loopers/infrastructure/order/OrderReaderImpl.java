@@ -1,13 +1,13 @@
 package com.loopers.infrastructure.order;
 
+import com.loopers.domain.PageResult;
 import com.loopers.domain.order.Order;
 import com.loopers.domain.order.OrderReader;
 import com.loopers.domain.order.QOrder;
 import com.querydsl.core.BooleanBuilder;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
@@ -35,7 +35,8 @@ public class OrderReaderImpl implements OrderReader {
     }
 
     @Override
-    public Page<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, Pageable pageable) {
+    public PageResult<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
         QOrder order = QOrder.order;
 
         BooleanBuilder where = new BooleanBuilder();
@@ -63,11 +64,14 @@ public class OrderReaderImpl implements OrderReader {
             .where(where)
             .fetchOne();
 
-        return new PageImpl<>(content, pageable, total != null ? total : 0L);
+        long totalCount = total != null ? total : 0L;
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        return new PageResult<>(content, totalCount, totalPages, page, size);
     }
 
     @Override
-    public Page<Order> findAll(Long memberId, Pageable pageable) {
+    public PageResult<Order> findAll(Long memberId, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
         QOrder order = QOrder.order;
 
         BooleanBuilder where = new BooleanBuilder();
@@ -89,6 +93,8 @@ public class OrderReaderImpl implements OrderReader {
             .where(where)
             .fetchOne();
 
-        return new PageImpl<>(content, pageable, total != null ? total : 0L);
+        long totalCount = total != null ? total : 0L;
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        return new PageResult<>(content, totalCount, totalPages, page, size);
     }
 }

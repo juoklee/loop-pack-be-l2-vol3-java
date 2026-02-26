@@ -1,9 +1,11 @@
 package com.loopers.infrastructure.brand;
 
+import com.loopers.domain.PageResult;
 import com.loopers.domain.brand.Brand;
 import com.loopers.domain.brand.BrandReader;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
@@ -36,10 +38,15 @@ public class BrandReaderImpl implements BrandReader {
     }
 
     @Override
-    public Page<Brand> findAll(String keyword, Pageable pageable) {
+    public PageResult<Brand> findAll(String keyword, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Brand> result;
         if (keyword == null || keyword.isBlank()) {
-            return brandJpaRepository.findByDeletedAtIsNull(pageable);
+            result = brandJpaRepository.findByDeletedAtIsNull(pageable);
+        } else {
+            result = brandJpaRepository.findByNameContainingAndDeletedAtIsNull(keyword, pageable);
         }
-        return brandJpaRepository.findByNameContainingAndDeletedAtIsNull(keyword, pageable);
+        return new PageResult<>(result.getContent(), result.getTotalElements(),
+            result.getTotalPages(), result.getNumber(), result.getSize());
     }
 }

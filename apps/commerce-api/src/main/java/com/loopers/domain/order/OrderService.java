@@ -4,9 +4,6 @@ import com.loopers.domain.PageResult;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,28 +60,12 @@ public class OrderService {
 
     @Transactional(readOnly = true)
     public PageResult<Order> getMyOrders(Long memberId, LocalDate startAt, LocalDate endAt, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Order> result = orderReader.findAllByMemberId(memberId, startAt, endAt, pageable);
-        return new PageResult<>(
-            result.getContent(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.getNumber(),
-            result.getSize()
-        );
+        return orderReader.findAllByMemberId(memberId, startAt, endAt, page, size);
     }
 
     @Transactional(readOnly = true)
     public PageResult<Order> getOrders(Long memberId, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Order> result = orderReader.findAll(memberId, pageable);
-        return new PageResult<>(
-            result.getContent(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.getNumber(),
-            result.getSize()
-        );
+        return orderReader.findAll(memberId, page, size);
     }
 
     public Map<Long, Integer> mergeOrderItems(List<OrderItemRequest> requests) {

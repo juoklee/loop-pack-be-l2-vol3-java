@@ -7,9 +7,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.util.HashMap;
 import java.util.List;
@@ -217,8 +215,8 @@ class BrandServiceTest {
         }
 
         @Override
-        public Page<Brand> findAll(String keyword, Pageable pageable) {
-            return new PageImpl<>(allBrands, pageable, allBrands.size());
+        public PageResult<Brand> findAll(String keyword, int page, int size) {
+            return new PageResult<>(allBrands, allBrands.size(), 1, page, size);
         }
     }
 

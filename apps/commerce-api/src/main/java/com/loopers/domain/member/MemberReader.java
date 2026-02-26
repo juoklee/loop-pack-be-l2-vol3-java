@@ -1,7 +1,6 @@
 package com.loopers.domain.member;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.util.Optional;
 
@@ -9,5 +8,5 @@ public interface MemberReader {
     boolean existsByLoginId(String loginId);
     Optional<Member> findByLoginId(String loginId);
     Optional<Member> findById(Long id);
-    Page<Member> findAll(String keyword, Pageable pageable);
+    PageResult<Member> findAll(String keyword, int page, int size);
 }

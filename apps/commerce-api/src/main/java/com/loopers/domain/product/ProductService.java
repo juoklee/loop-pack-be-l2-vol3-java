@@ -4,9 +4,6 @@ import com.loopers.domain.PageResult;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -73,14 +70,6 @@ public class ProductService {
 
     @Transactional(readOnly = true)
     public PageResult<Product> getProducts(String keyword, Long brandId, ProductSortType sort, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Product> result = productReader.findAll(keyword, brandId, sort, pageable);
-        return new PageResult<>(
-            result.getContent(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.getNumber(),
-            result.getSize()
-        );
+        return productReader.findAll(keyword, brandId, sort, page, size);
     }
 }

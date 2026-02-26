@@ -1,6 +1,7 @@
 package com.loopers.infrastructure.product;
 
 import com.loopers.domain.brand.QBrand;
+import com.loopers.domain.PageResult;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductReader;
 import com.loopers.domain.product.ProductSortType;
@@ -9,8 +10,7 @@ import com.querydsl.core.BooleanBuilder;
 import com.querydsl.core.types.OrderSpecifier;
 import com.querydsl.jpa.impl.JPAQueryFactory;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
@@ -30,7 +30,8 @@ public class ProductReaderImpl implements ProductReader {
     }
 
     @Override
-    public Page<Product> findAll(String keyword, Long brandId, ProductSortType sort, Pageable pageable) {
+    public PageResult<Product> findAll(String keyword, Long brandId, ProductSortType sort, int page, int size) {
+        Pageable pageable = PageRequest.of(page, size);
         QProduct product = QProduct.product;
         QBrand brand = QBrand.brand;
 
@@ -69,7 +70,9 @@ public class ProductReaderImpl implements ProductReader {
         }
         Long total = countQuery.where(where).fetchOne();
 
-        return new PageImpl<>(content, pageable, total != null ? total : 0L);
+        long totalCount = total != null ? total : 0L;
+        int totalPages = (int) Math.ceil((double) totalCount / size);
+        return new PageResult<>(content, totalCount, totalPages, page, size);
     }
 
     @Override

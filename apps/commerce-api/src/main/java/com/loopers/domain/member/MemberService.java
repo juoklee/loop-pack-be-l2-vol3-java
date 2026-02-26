@@ -4,9 +4,6 @@ import com.loopers.domain.PageResult;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -63,14 +60,6 @@ public class MemberService {
 
     @Transactional(readOnly = true)
     public PageResult<Member> getMembers(String keyword, int page, int size) {
-        Pageable pageable = PageRequest.of(page, size);
-        Page<Member> result = memberReader.findAll(keyword, pageable);
-        return new PageResult<>(
-            result.getContent(),
-            result.getTotalElements(),
-            result.getTotalPages(),
-            result.getNumber(),
-            result.getSize()
-        );
+        return memberReader.findAll(keyword, page, size);
     }
 }

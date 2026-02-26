@@ -6,11 +6,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.time.LocalDate;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -168,8 +168,8 @@ class MemberServiceTest {
         }
 
         @Override
-        public Page<Member> findAll(String keyword, Pageable pageable) {
-            return Page.empty();
+        public PageResult<Member> findAll(String keyword, int page, int size) {
+            return new PageResult<>(List.of(), 0, 0, page, size);
         }
     }
 

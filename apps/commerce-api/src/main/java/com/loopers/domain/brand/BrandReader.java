@@ -1,7 +1,6 @@
 package com.loopers.domain.brand;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
+import com.loopers.domain.PageResult;
 
 import java.util.List;
 import java.util.Optional;
@@ -11,5 +10,5 @@ public interface BrandReader {
     boolean existsById(Long id);
     boolean existsByName(String name);
     List<Brand> findAllByIds(List<Long> ids);
-    Page<Brand> findAll(String keyword, Pageable pageable);
+    PageResult<Brand> findAll(String keyword, int page, int size);
 }
