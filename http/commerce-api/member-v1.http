@@ -188,3 +188,42 @@ X-Loopers-LoginPw: Test1234!
 {
   "password": "WrongPass1!"
 }
+
+###############################################
+# Admin: 회원 목록 조회 API (AD-8)
+###############################################
+
+### 회원 목록 조회 (전체)
+GET {{baseUrl}}/api-admin/v1/members?page=0&size=20
+X-Loopers-Ldap: loopers.admin
+
+### 회원 목록 조회 (keyword - loginId 검색)
+GET {{baseUrl}}/api-admin/v1/members?keyword=testUser&page=0&size=20
+X-Loopers-Ldap: loopers.admin
+
+### 회원 목록 조회 (keyword - 이름 검색)
+GET {{baseUrl}}/api-admin/v1/members?keyword=홍길동&page=0&size=20
+X-Loopers-Ldap: loopers.admin
+
+### 회원 목록 조회 (keyword - 이메일 검색)
+GET {{baseUrl}}/api-admin/v1/members?keyword=example.com&page=0&size=20
+X-Loopers-Ldap: loopers.admin
+
+### 회원 목록 조회 (매칭 없음)
+GET {{baseUrl}}/api-admin/v1/members?keyword=nonexistent&page=0&size=20
+X-Loopers-Ldap: loopers.admin
+
+### 회원 목록 조회 (인증 없음 - 401)
+GET {{baseUrl}}/api-admin/v1/members?page=0&size=20
+
+###############################################
+# Admin: 회원 상세 조회 API (AD-9)
+###############################################
+
+### 회원 상세 조회 (정상 - 마스킹 없음)
+GET {{baseUrl}}/api-admin/v1/members/1
+X-Loopers-Ldap: loopers.admin
+
+### 회원 상세 조회 (존재하지 않는 회원 - 404)
+GET {{baseUrl}}/api-admin/v1/members/9999
+X-Loopers-Ldap: loopers.admin

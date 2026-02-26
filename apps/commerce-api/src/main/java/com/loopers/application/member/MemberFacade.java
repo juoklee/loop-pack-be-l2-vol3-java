@@ -1,5 +1,7 @@
 package com.loopers.application.member;
 
+import com.loopers.application.PagedInfo;
+import com.loopers.domain.PageResult;
 import com.loopers.domain.member.Gender;
 import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
@@ -36,5 +38,21 @@ public class MemberFacade {
 
     public void withdraw(String loginId, String rawPassword) {
         memberService.withdraw(loginId, rawPassword);
+    }
+
+    public PagedInfo<AdminMemberInfo> getMembersForAdmin(String keyword, int page, int size) {
+        PageResult<Member> result = memberService.getMembers(keyword, page, size);
+        return new PagedInfo<>(
+            result.content().stream().map(AdminMemberInfo::from).toList(),
+            result.totalElements(),
+            result.totalPages(),
+            result.page(),
+            result.size()
+        );
+    }
+
+    public AdminMemberInfo getMemberForAdmin(Long memberId) {
+        Member member = memberService.getMember(memberId);
+        return AdminMemberInfo.from(member);
     }
 }
