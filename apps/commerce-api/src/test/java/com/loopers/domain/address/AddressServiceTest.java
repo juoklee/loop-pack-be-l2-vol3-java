@@ -233,7 +233,7 @@ class AddressServiceTest {
 
     @DisplayName("기본 배송지를 설정할 때, ")
     @Nested
-    class SetDefault {
+    class ChangeDefault {
 
         @DisplayName("다른 배송지를 기본으로 설정하면, 기존 기본이 해제되고 새 기본이 설정된다.")
         @Test
@@ -245,7 +245,7 @@ class AddressServiceTest {
                 "54321", "서울시 서초구", null); // id=2, 비기본
 
             // Act
-            addressService.setDefault(2L, 1L);
+            addressService.changeDefault(2L, 1L);
 
             // Assert
             Address oldDefault = addressService.getAddress(1L, 1L);
@@ -261,7 +261,7 @@ class AddressServiceTest {
         void throwsNotFound_whenNotExists() {
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                addressService.setDefault(999L, 1L)
+                addressService.changeDefault(999L, 1L)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }

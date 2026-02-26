@@ -81,7 +81,7 @@ public class Address extends BaseEntity {
         super.delete();
     }
 
-    public void setDefault(boolean isDefault) {
+    public void changeDefault(boolean isDefault) {
         this.isDefault = isDefault;
     }
 

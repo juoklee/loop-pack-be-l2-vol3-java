@@ -194,7 +194,7 @@ class AddressTest {
 
     @DisplayName("기본 배송지를 설정할 때, ")
     @Nested
-    class SetDefault {
+    class ChangeDefault {
 
         @DisplayName("true로 설정하면, 기본 배송지가 된다.")
         @Test
@@ -204,7 +204,7 @@ class AddressTest {
                 "12345", "서울시 강남구", null, false);
 
             // Act
-            address.setDefault(true);
+            address.changeDefault(true);
 
             // Assert
             assertThat(address.getIsDefault()).isTrue();
@@ -218,7 +218,7 @@ class AddressTest {
                 "12345", "서울시 강남구", null, true);
 
             // Act
-            address.setDefault(false);
+            address.changeDefault(false);
 
             // Assert
             assertThat(address.getIsDefault()).isFalse();

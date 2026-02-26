@@ -74,12 +74,12 @@ public class AddressV1Controller {
     }
 
     @PatchMapping("/{addressId}/default")
-    public ApiResponse<Void> setDefault(
+    public ApiResponse<Void> changeDefault(
         HttpServletRequest request,
         @PathVariable Long addressId
     ) {
         String loginId = getAuthenticatedLoginId(request);
-        addressFacade.setDefault(loginId, addressId);
+        addressFacade.changeDefault(loginId, addressId);
         return ApiResponse.success(null);
     }
 

@@ -55,14 +55,14 @@ public class AddressService {
     }
 
     @Transactional
-    public void setDefault(Long id, Long memberId) {
+    public void changeDefault(Long id, Long memberId) {
         Address newDefault = getAddress(id, memberId);
         List<Address> addresses = addressReader.findAllByMemberId(memberId);
         for (Address address : addresses) {
             if (address.getIsDefault()) {
-                address.setDefault(false);
+                address.changeDefault(false);
             }
         }
-        newDefault.setDefault(true);
+        newDefault.changeDefault(true);
     }
 }

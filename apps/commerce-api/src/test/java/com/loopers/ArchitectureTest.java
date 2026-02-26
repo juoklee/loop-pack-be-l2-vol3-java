@@ -5,6 +5,7 @@ import com.tngtech.archunit.junit.AnalyzeClasses;
 import com.tngtech.archunit.junit.ArchTest;
 import com.tngtech.archunit.lang.ArchRule;
 
+import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.methods;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 import static com.tngtech.archunit.library.Architectures.layeredArchitecture;
 import static com.tngtech.archunit.library.dependencies.SlicesRuleDefinition.slices;
@@ -44,4 +45,24 @@ class ArchitectureTest {
                     "jakarta.persistence..",
                     "org.springframework.data.."
             );
+
+    // — 4. Domain Repository 인터페이스는 순수 자바 (JPA/Spring Data 비의존) —
+    // DIP: domainRepository는 특정 데이터베이스 기술에 종속되지 않은 순수한 자바 인터페이스여야 함
+    @ArchTest
+    static final ArchRule domain_repository_should_be_pure_java = noClasses()
+            .that().resideInAPackage("..domain..")
+            .and().haveSimpleNameEndingWith("Repository")
+            .should().dependOnClassesThat().resideInAnyPackage(
+                    "jakarta.persistence..",
+                    "org.springframework.data.."
+            );
+
+    // — 5. Domain Entity는 무분별한 setter를 노출하지 않음 —
+    // 의미 있는 메서드명(예: changeShippingInfo())을 통해 상태를 변경하도록 제어
+    @ArchTest
+    static final ArchRule domain_should_not_expose_setters = methods()
+            .that().haveNameMatching("set[A-Z].*")
+            .and().areDeclaredInClassesThat().resideInAPackage("..domain..")
+            .should().notBePublic()
+            .allowEmptyShould(true);
 }

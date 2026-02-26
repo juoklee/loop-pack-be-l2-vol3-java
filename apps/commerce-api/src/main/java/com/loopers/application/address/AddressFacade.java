@@ -49,9 +49,9 @@ public class AddressFacade {
         addressService.delete(addressId, memberId);
     }
 
-    public void setDefault(String loginId, Long addressId) {
+    public void changeDefault(String loginId, Long addressId) {
         Long memberId = getMemberId(loginId);
-        addressService.setDefault(addressId, memberId);
+        addressService.changeDefault(addressId, memberId);
     }
 
     private Long getMemberId(String loginId) {
