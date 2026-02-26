@@ -5,8 +5,7 @@ import com.loopers.application.order.OrderFacade;
 import com.loopers.application.order.OrderInfo;
 import com.loopers.application.order.OrderSummaryInfo;
 import com.loopers.interfaces.api.ApiResponse;
-import com.loopers.support.error.CoreException;
-import com.loopers.support.error.ErrorType;
+import com.loopers.support.auth.AuthUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -26,7 +25,7 @@ public class OrderV1Controller {
         HttpServletRequest request,
         @RequestBody OrderV1Dto.CreateOrderRequest body
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         List<OrderFacade.OrderItemRequest> itemRequests = body.items().stream()
             .map(item -> new OrderFacade.OrderItemRequest(item.productId(), item.quantity()))
             .toList();
@@ -42,7 +41,7 @@ public class OrderV1Controller {
         @RequestParam(defaultValue = "0") int page,
         @RequestParam(defaultValue = "20") int size
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         PagedInfo<OrderSummaryInfo> result = orderFacade.getMyOrders(loginId, startAt, endAt, page, size);
         return ApiResponse.success(OrderV1Dto.OrderListResponse.from(result));
     }
@@ -52,7 +51,7 @@ public class OrderV1Controller {
         HttpServletRequest request,
         @PathVariable Long orderId
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         OrderInfo info = orderFacade.getOrder(loginId, orderId);
         return ApiResponse.success(OrderV1Dto.OrderResponse.from(info));
     }
@@ -62,7 +61,7 @@ public class OrderV1Controller {
         HttpServletRequest request,
         @PathVariable Long orderId
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         orderFacade.cancelOrder(loginId, orderId);
         return ApiResponse.success();
     }
@@ -73,20 +72,12 @@ public class OrderV1Controller {
         @PathVariable Long orderId,
         @RequestBody OrderV1Dto.UpdateShippingAddressRequest body
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         OrderInfo info = orderFacade.updateShippingAddress(
             loginId, orderId,
             body.recipientName(), body.recipientPhone(),
             body.zipCode(), body.address1(), body.address2()
         );
         return ApiResponse.success(OrderV1Dto.OrderResponse.from(info));
-    }
-
-    private String getAuthenticatedLoginId(HttpServletRequest request) {
-        Object attribute = request.getAttribute("authenticatedLoginId");
-        if (!(attribute instanceof String loginId)) {
-            throw new CoreException(ErrorType.UNAUTHORIZED, "인증된 회원 정보가 없습니다.");
-        }
-        return loginId;
     }
 }

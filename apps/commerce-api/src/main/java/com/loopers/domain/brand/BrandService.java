@@ -7,6 +7,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @Component
 public class BrandService {
@@ -55,6 +57,11 @@ public class BrandService {
         Brand brand = getBrand(id);
         brand.decreaseLikeCount();
         return brand.getLikeCount();
+    }
+
+    @Transactional(readOnly = true)
+    public List<Brand> getBrandsByIds(List<Long> ids) {
+        return brandReader.findAllByIds(ids);
     }
 
     @Transactional(readOnly = true)

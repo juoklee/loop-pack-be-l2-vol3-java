@@ -3,8 +3,7 @@ package com.loopers.interfaces.api.member;
 import com.loopers.application.member.MemberFacade;
 import com.loopers.application.member.MemberInfo;
 import com.loopers.interfaces.api.ApiResponse;
-import com.loopers.support.error.CoreException;
-import com.loopers.support.error.ErrorType;
+import com.loopers.support.auth.AuthUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -43,7 +42,7 @@ public class MemberV1Controller {
 
     @GetMapping("/me")
     public ApiResponse<MemberV1Dto.MemberResponse> getMe(HttpServletRequest request) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         MemberInfo info = memberFacade.getMe(loginId);
         return ApiResponse.success(MemberV1Dto.MemberResponse.from(info));
     }
@@ -53,7 +52,7 @@ public class MemberV1Controller {
         HttpServletRequest request,
         @RequestBody MemberV1Dto.ChangePasswordRequest passwordRequest
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         memberFacade.changePassword(
             loginId,
             passwordRequest.currentPassword(),
@@ -67,7 +66,7 @@ public class MemberV1Controller {
         HttpServletRequest request,
         @RequestBody MemberV1Dto.UpdatePhoneRequest phoneRequest
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         memberFacade.updatePhone(loginId, phoneRequest.phone());
         return ApiResponse.success(null);
     }
@@ -77,16 +76,8 @@ public class MemberV1Controller {
         HttpServletRequest request,
         @RequestBody MemberV1Dto.WithdrawRequest withdrawRequest
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         memberFacade.withdraw(loginId, withdrawRequest.password());
         return ApiResponse.success(null);
-    }
-
-    private String getAuthenticatedLoginId(HttpServletRequest request) {
-        Object attribute = request.getAttribute("authenticatedLoginId");
-        if (!(attribute instanceof String loginId)) {
-            throw new CoreException(ErrorType.UNAUTHORIZED, "인증된 회원 정보가 없습니다.");
-        }
-        return loginId;
     }
 }

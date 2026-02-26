@@ -69,6 +69,11 @@ public class ProductService {
     }
 
     @Transactional(readOnly = true)
+    public List<Product> getProductsByIds(List<Long> ids) {
+        return productReader.findAllByIds(ids);
+    }
+
+    @Transactional(readOnly = true)
     public PageResult<Product> getProducts(String keyword, Long brandId, ProductSortType sort, int page, int size) {
         return productReader.findAll(keyword, brandId, sort, page, size);
     }

@@ -3,8 +3,7 @@ package com.loopers.interfaces.api.address;
 import com.loopers.application.address.AddressFacade;
 import com.loopers.application.address.AddressInfo;
 import com.loopers.interfaces.api.ApiResponse;
-import com.loopers.support.error.CoreException;
-import com.loopers.support.error.ErrorType;
+import com.loopers.support.auth.AuthUtils;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -34,7 +33,7 @@ public class AddressV1Controller {
         HttpServletRequest request,
         @RequestBody AddressV1Dto.CreateAddressRequest body
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         AddressInfo info = addressFacade.register(
             loginId, body.label(), body.recipientName(), body.recipientPhone(),
             body.zipCode(), body.address1(), body.address2()
@@ -44,7 +43,7 @@ public class AddressV1Controller {
 
     @GetMapping
     public ApiResponse<AddressV1Dto.AddressListResponse> getAddresses(HttpServletRequest request) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         List<AddressInfo> infos = addressFacade.getAddresses(loginId);
         return ApiResponse.success(AddressV1Dto.AddressListResponse.from(infos));
     }
@@ -55,7 +54,7 @@ public class AddressV1Controller {
         @PathVariable Long addressId,
         @RequestBody AddressV1Dto.UpdateAddressRequest body
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         addressFacade.update(
             loginId, addressId, body.label(), body.recipientName(), body.recipientPhone(),
             body.zipCode(), body.address1(), body.address2()
@@ -68,7 +67,7 @@ public class AddressV1Controller {
         HttpServletRequest request,
         @PathVariable Long addressId
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         addressFacade.delete(loginId, addressId);
         return ApiResponse.success(null);
     }
@@ -78,16 +77,8 @@ public class AddressV1Controller {
         HttpServletRequest request,
         @PathVariable Long addressId
     ) {
-        String loginId = getAuthenticatedLoginId(request);
+        String loginId = AuthUtils.getAuthenticatedLoginId(request);
         addressFacade.changeDefault(loginId, addressId);
         return ApiResponse.success(null);
-    }
-
-    private String getAuthenticatedLoginId(HttpServletRequest request) {
-        Object attribute = request.getAttribute("authenticatedLoginId");
-        if (!(attribute instanceof String loginId)) {
-            throw new CoreException(ErrorType.UNAUTHORIZED, "인증된 회원 정보가 없습니다.");
-        }
-        return loginId;
     }
 }

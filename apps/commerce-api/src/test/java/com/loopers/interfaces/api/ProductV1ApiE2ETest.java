@@ -75,9 +75,9 @@ class ProductV1ApiE2ETest {
             );
         }
 
-        @DisplayName("존재하지 않는 브랜드로 등록하면, 400 Bad Request 응답을 받는다.")
+        @DisplayName("존재하지 않는 브랜드로 등록하면, 404 Not Found 응답을 받는다.")
         @Test
-        void returnsBadRequest_whenBrandNotExists() {
+        void returnsNotFound_whenBrandNotExists() {
             // Arrange
             var request = new ProductV1Dto.RegisterRequest(999L, "에어맥스 90", "설명", 139000L, 100, 5);
 
@@ -90,7 +90,7 @@ class ProductV1ApiE2ETest {
             );
 
             // Assert
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @DisplayName("이름이 빈 문자열이면, 400 Bad Request 응답을 받는다.")

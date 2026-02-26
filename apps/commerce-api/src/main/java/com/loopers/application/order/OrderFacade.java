@@ -3,7 +3,7 @@ package com.loopers.application.order;
 import com.loopers.application.PagedInfo;
 import com.loopers.domain.PageResult;
 import com.loopers.domain.address.Address;
-import com.loopers.domain.address.AddressReader;
+import com.loopers.domain.address.AddressService;
 import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
 import com.loopers.domain.order.Order;
@@ -11,8 +11,6 @@ import com.loopers.domain.order.OrderItem;
 import com.loopers.domain.order.OrderService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
-import com.loopers.support.error.CoreException;
-import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,15 +27,14 @@ public class OrderFacade {
     private final MemberService memberService;
     private final ProductService productService;
     private final OrderService orderService;
-    private final AddressReader addressReader;
+    private final AddressService addressService;
 
     @Transactional
     public OrderInfo createOrder(String loginId, Long addressId, List<OrderItemRequest> itemRequests) {
         Long memberId = getMemberId(loginId);
 
         // 1. 배송지 검증 + 스냅샷
-        Address address = addressReader.findByIdAndMemberId(addressId, memberId)
-            .orElseThrow(() -> new CoreException(ErrorType.BAD_REQUEST, "존재하지 않는 배송지입니다."));
+        Address address = addressService.getAddress(addressId, memberId);
 
         // 2. 주문 항목 검증 + 중복 상품 합산 (도메인 규칙)
         List<OrderService.OrderItemRequest> serviceRequests = itemRequests.stream()

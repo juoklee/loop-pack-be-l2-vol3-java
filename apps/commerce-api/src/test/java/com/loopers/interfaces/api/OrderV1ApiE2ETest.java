@@ -211,9 +211,9 @@ class OrderV1ApiE2ETest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
-        @DisplayName("존재하지 않는 배송지로 주문 시, 400 Bad Request를 반환한다.")
+        @DisplayName("존재하지 않는 배송지로 주문 시, 404 Not Found를 반환한다.")
         @Test
-        void returnsBadRequest_whenAddressNotExists() {
+        void returnsNotFound_whenAddressNotExists() {
             // Arrange
             registerMember("user1", "Test1234!");
             Long brandId = registerBrand("Nike", "Just Do It");
@@ -231,7 +231,7 @@ class OrderV1ApiE2ETest {
             );
 
             // Assert
-            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
         }
 
         @DisplayName("빈 items로 주문 시, 400 Bad Request를 반환한다.")
