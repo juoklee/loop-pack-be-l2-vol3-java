@@ -1,9 +1,7 @@
 package com.loopers.support.auth;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loopers.domain.member.MemberReader;
 import com.loopers.domain.member.PasswordEncoder;
-import com.loopers.interfaces.api.ApiResponse;
 import com.loopers.support.error.ErrorType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -25,7 +23,6 @@ public class MemberAuthFilter extends OncePerRequestFilter {
 
     private final MemberReader memberReader;
     private final PasswordEncoder passwordEncoder;
-    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -65,8 +62,9 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         response.setStatus(errorType.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        ApiResponse<Object> body = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
-        objectMapper.writeValue(response.getWriter(), body);
+        String body = "{\"meta\":{\"result\":\"FAIL\",\"errorCode\":\"%s\",\"message\":\"%s\"},\"data\":null}"
+            .formatted(errorType.getCode(), errorType.getMessage());
+        response.getWriter().write(body);
     }
 
     private boolean requiresAuthentication(HttpServletRequest request) {
@@ -86,6 +84,11 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         // POST /api/v1/products/{id}/likes, POST /api/v1/brands/{id}/likes 인증 필요
         if ("POST".equals(method) && path.endsWith("/likes")
             && (path.startsWith("/api/v1/products/") || path.startsWith("/api/v1/brands/"))) {
+            return true;
+        }
+
+        // /api/v1/orders/** 경로는 인증 필요
+        if (path.startsWith("/api/v1/orders")) {
             return true;
         }
 

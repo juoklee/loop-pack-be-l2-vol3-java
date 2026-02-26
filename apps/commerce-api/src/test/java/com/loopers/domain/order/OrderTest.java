@@ -1,0 +1,157 @@
+package com.loopers.domain.order;
+
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertAll;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+class OrderTest {
+
+    @DisplayName("주문을 생성할 때, ")
+    @Nested
+    class Create {
+
+        @DisplayName("모든 필드가 유효하면, COMPLETED 상태로 생성된다.")
+        @Test
+        void createsOrder_withCompletedStatus() {
+            // Arrange & Act
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345",
+                "서울시 강남구 테헤란로 123", "101동 202호", 258000L
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(order.getMemberId()).isEqualTo(1L),
+                () -> assertThat(order.getRecipientName()).isEqualTo("홍길동"),
+                () -> assertThat(order.getRecipientPhone()).isEqualTo("010-1234-5678"),
+                () -> assertThat(order.getZipCode()).isEqualTo("12345"),
+                () -> assertThat(order.getAddress1()).isEqualTo("서울시 강남구 테헤란로 123"),
+                () -> assertThat(order.getAddress2()).isEqualTo("101동 202호"),
+                () -> assertThat(order.getTotalAmount()).isEqualTo(258000L),
+                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED)
+            );
+        }
+
+        @DisplayName("address2가 null이어도 정상 생성된다.")
+        @Test
+        void createsOrder_whenAddress2IsNull() {
+            // Arrange & Act
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345",
+                "서울시 강남구 테헤란로 123", null, 100000L
+            );
+
+            // Assert
+            assertThat(order.getAddress2()).isNull();
+        }
+
+        @DisplayName("memberId가 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenMemberIdIsNull() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(null, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("recipientName이 빈 문자열이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenRecipientNameIsBlank() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(1L, "", "010-1234-5678", "12345", "주소", null, 100000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("totalAmount가 0 이하이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenTotalAmountIsNotPositive() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null, 0L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("주문을 취소할 때, ")
+    @Nested
+    class Cancel {
+
+        @DisplayName("COMPLETED 상태이면, CANCELLED로 변경된다.")
+        @Test
+        void cancelsOrder_whenStatusIsCompleted() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Act
+            order.cancel();
+
+            // Assert
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        }
+
+        @DisplayName("이미 CANCELLED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenAlreadyCancelled() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+            order.cancel();
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, order::cancel);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("배송지를 수정할 때, ")
+    @Nested
+    class UpdateShippingAddress {
+
+        @DisplayName("COMPLETED 상태이면, 배송지 스냅샷이 수정된다.")
+        @Test
+        void updatesAddress_whenStatusIsCompleted() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "기존 주소", null, 100000L
+            );
+
+            // Act
+            order.updateShippingAddress("김철수", "010-9999-9999", "67890", "새 주소", "301동");
+
+            // Assert
+            assertAll(
+                () -> assertThat(order.getRecipientName()).isEqualTo("김철수"),
+                () -> assertThat(order.getRecipientPhone()).isEqualTo("010-9999-9999"),
+                () -> assertThat(order.getZipCode()).isEqualTo("67890"),
+                () -> assertThat(order.getAddress1()).isEqualTo("새 주소"),
+                () -> assertThat(order.getAddress2()).isEqualTo("301동")
+            );
+        }
+
+        @DisplayName("CANCELLED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenStatusIsCancelled() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+            order.cancel();
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                order.updateShippingAddress("김철수", "010-9999-9999", "67890", "새 주소", null)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+}
