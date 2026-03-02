@@ -1,7 +1,7 @@
 package com.loopers.support.config;
 
-import com.loopers.support.auth.AdminAuthFilter;
-import com.loopers.support.auth.MemberAuthFilter;
+import com.loopers.interfaces.security.AdminAuthFilter;
+import com.loopers.interfaces.security.MemberAuthFilter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

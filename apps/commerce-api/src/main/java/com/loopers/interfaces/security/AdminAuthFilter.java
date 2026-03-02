@@ -1,4 +1,4 @@
-package com.loopers.support.auth;
+package com.loopers.interfaces.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.loopers.interfaces.api.ApiResponse;

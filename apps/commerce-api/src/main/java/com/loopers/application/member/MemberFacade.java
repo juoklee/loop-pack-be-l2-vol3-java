@@ -16,6 +16,10 @@ public class MemberFacade {
 
     private final MemberService memberService;
 
+    public boolean authenticate(String loginId, String rawPassword) {
+        return memberService.authenticate(loginId, rawPassword);
+    }
+
     public MemberInfo register(String loginId, String rawPassword, String name,
                                LocalDate birthDate, String gender, String email, String phone) {
         Gender genderEnum = Gender.valueOf(gender);

@@ -47,6 +47,13 @@ public class MemberService {
     }
 
     @Transactional(readOnly = true)
+    public boolean authenticate(String loginId, String rawPassword) {
+        return memberReader.findByLoginId(loginId)
+            .filter(m -> m.verifyPassword(rawPassword, passwordEncoder))
+            .isPresent();
+    }
+
+    @Transactional(readOnly = true)
     public Member getMemberByLoginId(String loginId) {
         return memberReader.findByLoginId(loginId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "회원을 찾을 수 없습니다."));

@@ -1,7 +1,8 @@
-package com.loopers.support.auth;
+package com.loopers.interfaces.security;
 
-import com.loopers.domain.member.MemberReader;
-import com.loopers.domain.member.PasswordEncoder;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.loopers.application.member.MemberFacade;
+import com.loopers.interfaces.api.ApiResponse;
 import com.loopers.support.error.ErrorType;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -21,8 +22,8 @@ public class MemberAuthFilter extends OncePerRequestFilter {
     private static final String HEADER_LOGIN_ID = "X-Loopers-LoginId";
     private static final String HEADER_LOGIN_PW = "X-Loopers-LoginPw";
 
-    private final MemberReader memberReader;
-    private final PasswordEncoder passwordEncoder;
+    private final MemberFacade memberFacade;
+    private final ObjectMapper objectMapper;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
@@ -43,9 +44,7 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         }
 
         // 회원 조회 및 비밀번호 검증
-        boolean authenticated = memberReader.findByLoginId(loginId)
-            .filter(m -> m.verifyPassword(loginPw, passwordEncoder))
-            .isPresent();
+        boolean authenticated = memberFacade.authenticate(loginId, loginPw);
 
         if (!authenticated) {
             sendUnauthorizedResponse(response);
@@ -62,9 +61,8 @@ public class MemberAuthFilter extends OncePerRequestFilter {
         response.setStatus(errorType.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        String body = "{\"meta\":{\"result\":\"FAIL\",\"errorCode\":\"%s\",\"message\":\"%s\"},\"data\":null}"
-            .formatted(errorType.getCode(), errorType.getMessage());
-        response.getWriter().write(body);
+        ApiResponse<Object> body = ApiResponse.fail(errorType.getCode(), errorType.getMessage());
+        objectMapper.writeValue(response.getWriter(), body);
     }
 
     private boolean requiresAuthentication(HttpServletRequest request) {
