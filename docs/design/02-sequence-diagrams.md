@@ -27,7 +27,7 @@
 
 ## 1. 인증 흐름
 
-모든 인증 필요 API의 전제조건. Filter가 요청을 가로채 인증을 수행하며, 이후 흐름의 `authenticatedMember` 출처를 명확히 한다.
+모든 인증 필요 API의 전제조건. Filter가 요청을 가로채 인증을 수행하며, 이후 흐름의 `authenticatedLoginId` 출처를 명확히 한다.
 
 ### 1-1. 회원 인증 (MemberAuthFilter)
 
@@ -48,8 +48,8 @@ sequenceDiagram
         alt 인증 실패 (미존재/비밀번호 불일치/탈퇴 회원)
             Filter-->>Client: 401 Unauthorized
         else 인증 성공
-            Filter->>Filter: setAttribute("authenticatedMember")
-            Note right of Filter: Controller가 @RequestAttribute로 수신
+            Filter->>Filter: setAttribute("authenticatedLoginId")
+            Note right of Filter: Controller가 @RequestAttribute로 loginId 수신
         end
     end
 ```
@@ -73,6 +73,7 @@ sequenceDiagram
 
 **핵심 포인트:**
 - Member 인증: 매 요청마다 loginId + password 검증 (세션/토큰 없음)
+- 인증 성공 시 `authenticatedLoginId` (String)을 request attribute로 전달 → Controller에서 loginId로 수신 → Facade에서 Member 조회
 - Admin 인증: LDAP 헤더 값만 확인, DB 조회 없음
 - 인증 불필요: 상품/브랜드 조회 (URL 패턴 제외)
 - 탈퇴(soft delete) 회원은 조회 시 제외 → 인증 실패
@@ -82,39 +83,41 @@ sequenceDiagram
 ## 2. 좋아요 토글
 
 Like 생성/삭제와 like_count 동기화가 하나의 트랜잭션에서 이루어져야 한다.
+단일 `Like` 엔티티 + `LikeTargetType` enum으로 상품/브랜드 좋아요를 통합 처리한다.
 
 ```mermaid
 sequenceDiagram
     actor User
-    participant Facade as ProductLikeFacade
+    participant Facade as LikeFacade
     participant ProductService
-    participant LikeService as ProductLikeService
+    participant LikeService
 
     Note over Facade, LikeService: @Transactional
 
-    User->>Facade: toggleLike(member, productId)
+    User->>Facade: toggleProductLike(loginId, productId)
 
     Facade->>ProductService: getProduct(productId)
     alt 상품 미존재
         ProductService-->>Facade: NOT_FOUND
     end
 
-    Facade->>LikeService: toggleLike(memberId, productId)
+    Facade->>LikeService: toggleLike(memberId, PRODUCT, productId)
     alt 좋아요 없음 → 등록
         LikeService-->>Facade: liked = true
         Facade->>ProductService: increaseLikeCount(productId)
-    else 좋아요 있음 → 취소
+    else 좋아요 있음 → 취소 (hard delete)
         LikeService-->>Facade: liked = false
         Facade->>ProductService: decreaseLikeCount(productId)
     end
 
-    Facade-->>User: LikeToggleResult (liked, likeCount)
+    Facade-->>User: LikeToggleInfo (liked, likeCount)
 ```
 
 **핵심 포인트:**
 - 단일 POST 토글 (있으면 취소, 없으면 등록)
 - like_count 증감은 동일 트랜잭션 내 처리
-- **브랜드 좋아요도 동일 패턴** (BrandLikeFacade → BrandService + BrandLikeService)
+- 단일 `LikeFacade`/`LikeService`로 상품·브랜드 좋아요 모두 처리
+- **브랜드 좋아요도 동일 패턴** (LikeFacade.toggleBrandLike → BrandService + LikeService)
 
 ---
 
@@ -131,14 +134,10 @@ sequenceDiagram
 
     Note over Facade, ProductService: @Transactional
 
-    Admin->>Facade: deleteBrand(brandId)
+    Admin->>Facade: delete(brandId)
 
-    Facade->>BrandService: getBrand(brandId)
-    alt 브랜드 미존재
-        BrandService-->>Facade: NOT_FOUND
-    end
-
-    Facade->>BrandService: delete(brand)
+    Facade->>BrandService: delete(brandId)
+    Note right of BrandService: 브랜드 존재 검증 (미존재 시 NOT_FOUND)
     Note right of BrandService: brand.deleted_at = now()
 
     Facade->>ProductService: deleteAllByBrandId(brandId)
@@ -165,33 +164,37 @@ sequenceDiagram
 
     Note over Facade, OrderService: @Transactional
 
-    User->>Facade: createOrder(member, items, addressId)
+    User->>Facade: createOrder(loginId, addressId, items)
 
     Facade->>AddressService: getAddress(addressId, memberId)
     alt 배송지 미존재 or 소유권 검증 실패
-        AddressService-->>Facade: BAD_REQUEST
+        AddressService-->>Facade: NOT_FOUND
     end
 
-    Note right of Facade: 동일 상품 합산 처리
+    Facade->>OrderService: mergeOrderItems(items)
+    Note right of OrderService: 동일 상품 수량 합산 + 빈 목록 검증
 
-    loop 상품별 처리
+    loop 합산된 상품별 처리
         Facade->>ProductService: getProduct(productId)
         alt 상품 미존재/삭제
             ProductService-->>Facade: NOT_FOUND
         end
+        Note right of Facade: product.validateOrderQuantity(qty)
         alt 주문 수량 > maxOrderQuantity
             Facade-->>User: BAD_REQUEST
         end
-        Facade->>ProductService: decreaseStock(product, quantity)
+        Note right of Facade: product.decreaseStock(qty)
         alt 재고 부족
-            ProductService-->>Facade: BAD_REQUEST (ROLLBACK)
+            Facade-->>User: BAD_REQUEST (ROLLBACK)
         end
     end
 
     Note right of Facade: totalAmount 계산
 
-    Facade->>OrderService: createOrder(memberId, address, items, totalAmount)
-    Note right of OrderService: Order(COMPLETED) + OrderItem(스냅샷) 생성
+    Facade->>OrderService: createOrder(memberId, 배송지 스냅샷, totalAmount)
+    Note right of OrderService: Order(COMPLETED) 생성
+    Facade->>OrderService: createOrderItems(orderId, 상품 스냅샷 목록)
+    Note right of OrderService: OrderItem(스냅샷) 생성
 
     Facade-->>User: OrderInfo
 ```
@@ -216,23 +219,20 @@ sequenceDiagram
 
     Note over Facade, ProductService: @Transactional
 
-    User->>Facade: cancelOrder(member, orderId)
+    User->>Facade: cancelOrder(loginId, orderId)
 
-    Facade->>OrderService: getOrder(orderId, memberId)
-    alt 주문 미존재 or 소유권 검증 실패
+    Facade->>OrderService: cancelOrder(orderId, memberId)
+    Note right of OrderService: 소유권 검증 + 취소 상태 체크
+    alt 주문 미존재 or 소유권 검증 실패 or 이미 CANCELLED
         OrderService-->>Facade: NOT_FOUND
     end
-    alt 이미 CANCELLED
-        OrderService-->>Facade: NOT_FOUND
-    end
+    Note right of OrderService: order.cancel() → status = CANCELLED
+    Note right of OrderService: OrderItem 목록 조회
+    OrderService-->>Facade: List<OrderItem>
 
-    Facade->>OrderService: cancel(order)
-    Note right of OrderService: status → CANCELLED
-
-    Facade->>OrderService: getOrderItems(orderId)
-
-    loop OrderItem별 처리
-        Facade->>ProductService: increaseStock(productId, quantity)
+    loop OrderItem별 재고 복원 (cross-domain orchestration)
+        Facade->>ProductService: getProduct(productId)
+        Note right of Facade: product.increaseStock(qty)
     end
 ```
 
@@ -247,7 +247,7 @@ sequenceDiagram
 | 기능 | 트랜잭션 소유자 | 참여 도메인 | 비고 |
 |------|----------------|-------------|------|
 | 인증 | MemberAuthFilter | Member | 트랜잭션 없음 |
-| 좋아요 토글 | ProductLikeFacade / BrandLikeFacade | Like, Product/Brand | like_count 동기화 |
+| 좋아요 토글 | LikeFacade | Like, Product/Brand | like_count 동기화, 단일 Facade로 상품·브랜드 모두 처리 |
 | 브랜드 삭제 | BrandFacade | Brand, Product | cascade soft delete |
 | 상품 등록 | ProductFacade | Brand(검증), Product | 브랜드 존재 확인 |
 | 주문 생성 | OrderFacade | Address, Product, Order | 재고 선차감, 실패 시 전체 롤백 |

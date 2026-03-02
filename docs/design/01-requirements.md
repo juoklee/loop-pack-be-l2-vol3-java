@@ -29,11 +29,11 @@
 
 | ID | 기능 | 액터 | URI | 설명 | 구현 상태 |
 |----|------|------|-----|------|-----------|
-| U-1 | 회원가입 | Guest | `POST /api/v1/members` | loginId, password, name, birthDate, gender, email, phone | 기존 구현 (gender, phone 추가 필요) |
-| U-2 | 내 정보 조회 | Member | `GET /api/v1/members/me` | 이름 마지막 글자 마스킹 | 기존 구현 |
-| U-3 | 비밀번호 변경 | Member | `PATCH /api/v1/members/me/password` | 현재 비밀번호 검증 + 새 비밀번호 규칙 | 기존 구현 |
-| U-4 | 내 정보 수정 | Member | `PATCH /api/v1/members/me` | 전화번호, 프로필 사진 수정 | 신규 |
-| U-5 | 회원 탈퇴 | Member | `DELETE /api/v1/members/me` | 비밀번호 확인 후 soft delete | 신규 |
+| U-1 | 회원가입 | Guest | `POST /api/v1/members` | loginId, password, name, birthDate, gender, email, phone | 구현 완료 |
+| U-2 | 내 정보 조회 | Member | `GET /api/v1/members/me` | 이름 마지막 글자 마스킹 | 구현 완료 |
+| U-3 | 비밀번호 변경 | Member | `PATCH /api/v1/members/me/password` | 현재 비밀번호 검증 + 새 비밀번호 규칙 | 구현 완료 |
+| U-4 | 내 정보 수정 (전화번호) | Member | `PATCH /api/v1/members/me` | 전화번호 수정 | 구현 완료 |
+| U-5 | 회원 탈퇴 | Member | `DELETE /api/v1/members/me` | 비밀번호 확인 후 soft delete | 구현 완료 |
 
 **검증 규칙:**
 - loginId: 영문+숫자만, unique
@@ -42,8 +42,7 @@
 - gender: MALE / FEMALE
 - email: 이메일 형식 검증
 - phone: 전화번호 형식 검증
-- profileImageUrl: URL 형식, nullable (파일 업로드 후 설정)
-- 인증: `MemberAuthFilter`에서 헤더 추출 → `request.setAttribute("authenticatedMember", member)`
+- 인증: `MemberAuthFilter`에서 헤더 추출 → `request.setAttribute("authenticatedLoginId", loginId)` → Controller에서 loginId로 수신, Facade에서 Member 조회
 - 탈퇴: 비밀번호 확인 필수, soft delete 처리, 탈퇴 후 동일 loginId 재가입 불가
 
 **경계 조건:**
@@ -58,14 +57,14 @@
 
 | ID | 기능 | 액터 | URI | 설명 |
 |----|------|------|-----|------|
-| A-1 | 배송지 목록 조회 | Member | `GET /api/v1/members/me/addresses?page=&size=` | 내 배송지 전체 |
+| A-1 | 배송지 목록 조회 | Member | `GET /api/v1/members/me/addresses` | 내 배송지 전체 (페이징 없음) |
 | A-2 | 배송지 등록 | Member | `POST /api/v1/members/me/addresses` | 첫 등록 시 자동 기본 배송지 |
 | A-3 | 배송지 수정 | Member | `PUT /api/v1/members/me/addresses/{addressId}` | 수령인, 주소 등 |
 | A-4 | 배송지 삭제 | Member | `DELETE /api/v1/members/me/addresses/{addressId}` | 삭제 |
 | A-5 | 기본 배송지 설정 | Member | `PATCH /api/v1/members/me/addresses/{addressId}/default` | 기본 배송지 변경 |
 
 **비즈니스 규칙:**
-- 회원당 배송지 여러 개 등록 가능
+- 회원당 배송지 **최대 10개** 등록 가능
 - 하나의 배송지를 기본 배송지로 지정 (`isDefault`)
 - 첫 번째 배송지 등록 시 자동으로 기본 배송지 설정
 - **기본 배송지는 삭제 불가** — 다른 배송지를 기본으로 변경 후 삭제 가능
@@ -114,9 +113,9 @@
 | ID | 기능 | 액터 | URI | 설명 |
 |----|------|------|-----|------|
 | P-1 | 상품 목록 조회 | Guest/Member | `GET /api/v1/products?keyword=&brandId=&sort=latest&page=0&size=20` | 키워드 검색+페이징+정렬+브랜드필터 |
-| P-2 | 상품 상세 조회 | Guest/Member | `GET /api/v1/products/{productId}` | 이름, 가격, 설명, 재고, 브랜드, 좋아요 수, 이미지 |
-| P-3 | 상품 등록 | Admin | `POST /api-admin/v1/products` | 브랜드 존재 필수, 이미지 URL, 최대 주문 수량 |
-| P-4 | 상품 수정 | Admin | `PUT /api-admin/v1/products/{productId}` | **브랜드 변경 불가**, 이미지/최대 주문 수량 변경 가능 |
+| P-2 | 상품 상세 조회 | Guest/Member | `GET /api/v1/products/{productId}` | 이름, 가격, 설명, 재고, 브랜드, 좋아요 수 |
+| P-3 | 상품 등록 | Admin | `POST /api-admin/v1/products` | 브랜드 존재 필수, 최대 주문 수량 |
+| P-4 | 상품 수정 | Admin | `PUT /api-admin/v1/products/{productId}` | **브랜드 변경 불가**, 최대 주문 수량 변경 가능 |
 | P-5 | 상품 삭제 | Admin | `DELETE /api-admin/v1/products/{productId}` | soft delete |
 
 **비즈니스 규칙:**
@@ -125,13 +124,12 @@
 - 가격은 양수, 재고는 0 이상, 최대 주문 수량은 양수
 - 최대 주문 수량(`maxOrderQuantity`): 1회 주문 시 해당 상품을 주문할 수 있는 최대 수량 (Admin이 등록/수정 시 설정)
 - 삭제된 상품은 조회 불가하지만 기존 주문의 스냅샷에는 영향 없음
-- 정렬: `latest`(필수), `price_asc`, `likes_desc`(선택)
-- imageUrl: nullable (이미지 없는 상품 허용)
+- 정렬: `latest`(필수), `price_asc`, `price_desc`, `likes_desc`(선택)
 - 상품 목록: `keyword` 파라미터로 상품명 또는 브랜드명 검색 (LIKE), 미입력 시 전체 목록
 - Admin은 조회 시 Public API 사용 (별도 Admin 조회 API 없음)
 
 **경계 조건:**
-- 존재하지 않는 브랜드로 상품 등록 → BAD_REQUEST
+- 존재하지 않는 브랜드로 상품 등록 → NOT_FOUND
 - 삭제된 상품 조회 → NOT_FOUND
 - 존재하지 않는 상품 수정/삭제 → NOT_FOUND
 - 재고 0인 상품: 조회 가능, 주문 불가
@@ -144,14 +142,16 @@
 
 **사용자 관점:** 마음에 드는 상품이나 브랜드에 좋아요를 표시하고, 내가 좋아요한 목록을 관리한다.
 
-#### 5-1. 상품 좋아요 (ProductLike)
+**구현 구조:** 단일 `Like` 엔티티 + `LikeTargetType` enum (PRODUCT, BRAND)으로 통합 구현. 별도의 ProductLike/BrandLike 엔티티 없이 `target_type`으로 구분한다.
+
+#### 5-1. 상품 좋아요
 
 | ID | 기능 | 액터 | URI | 설명 |
 |----|------|------|-----|------|
 | PL-1 | 상품 좋아요 토글 | Member | `POST /api/v1/products/{productId}/likes` | 좋아요 ↔ 취소 토글 |
 | PL-2 | 내 상품 좋아요 목록 | Member | `GET /api/v1/members/me/likes/products?page=&size=` | 본인만 조회 가능 |
 
-#### 5-2. 브랜드 좋아요 (BrandLike)
+#### 5-2. 브랜드 좋아요
 
 | ID | 기능 | 액터 | URI | 설명 |
 |----|------|------|-----|------|
@@ -164,6 +164,8 @@
 - 토글 응답에 현재 상태 포함 (`liked: true/false`, `likeCount`)
 - 좋아요 목록은 **본인만 조회 가능** (타인 접근 불가)
 - 상품 좋아요 수는 상품 목록의 `likes_desc` 정렬에 활용
+- 단일 `likes` 테이블에서 `target_type`으로 상품/브랜드 좋아요를 구분
+- Like는 BaseEntity를 상속하지 않으며, 자체 id/createdAt/updatedAt 관리 (deleted_at 없음, hard delete)
 
 **경계 조건:**
 - 존재하지 않는 대상에 좋아요 → NOT_FOUND
@@ -212,8 +214,9 @@
 **경계 조건:**
 - 빈 items 배열 → BAD_REQUEST
 - quantity <= 0 → BAD_REQUEST
-- addressId 누락 또는 존재하지 않는 배송지 → BAD_REQUEST
-- 타인의 배송지로 주문 시도 → BAD_REQUEST
+- addressId 누락 → BAD_REQUEST
+- 존재하지 않는 배송지 → NOT_FOUND
+- 타인의 배송지로 주문 시도 → NOT_FOUND
 - 삭제된 상품으로 주문 → NOT_FOUND
 - 재고 부족 → BAD_REQUEST (어떤 상품이 부족한지 메시지 포함)
 - 주문 수량이 상품의 maxOrderQuantity 초과 → BAD_REQUEST
@@ -267,23 +270,9 @@
 
 ---
 
-### 8. 파일 업로드 (File)
+### 8. 파일 업로드 (File) — Out of Scope
 
-**사용자 관점:** 프로필 사진이나 상품 이미지를 업로드한다.
-
-| ID | 기능 | 액터 | URI | 설명 |
-|----|------|------|-----|------|
-| F-1 | 파일 업로드 | Member/Admin | `POST /api/v1/files` | 이미지 업로드 → URL 반환 |
-
-**비즈니스 규칙:**
-- 업로드된 파일은 스토리지에 저장 후 접근 가능한 URL을 반환
-- 반환된 URL을 Member.profileImageUrl 또는 Product.imageUrl에 설정
-- 허용 파일 형식: 이미지 (JPEG, PNG, WEBP)
-- 파일 크기 상한 설정 필요
-
-**경계 조건:**
-- 허용되지 않은 파일 형식 → BAD_REQUEST
-- 파일 크기 초과 → BAD_REQUEST
+> **미구현.** profileImageUrl, imageUrl 필드와 함께 후속 단계에서 구현 예정.
 
 ---
 
@@ -297,30 +286,31 @@
 | 주문 취소 | 재고 전체 복원 |
 | 동시성 제어 | 기본 기능 구현 후 별도 단계 |
 | 좋아요 방식 | 토글 (POST 1개 엔드포인트, 있으면 취소 / 없으면 등록) |
+| 좋아요 구조 | 단일 Like 엔티티 + LikeTargetType enum (PRODUCT, BRAND) |
 | 좋아요 수 전략 | Product/Brand에 like_count 비정규화 컬럼 |
 | 주문 동일상품 중복 | 수량 합산 처리 |
 | 키워드 검색 | 상품 목록은 상품명+브랜드명 LIKE 검색, 브랜드 목록은 브랜드명 LIKE 검색 |
 | Admin 조회 | Brand/Product는 Public API 공유, Order만 Admin 전용 조회 |
 | 좋아요 목록 | 본인만 조회 가능 |
-| 배송지 관리 | Address 별도 엔티티 (Member:Address = 1:N), 주문에 스냅샷 |
+| 배송지 관리 | Address 별도 엔티티 (Member:Address = 1:N, 최대 10개), 주문에 스냅샷 |
 | 주문 배송지 | 원본 Address와 독립적으로 수정 가능 |
-| 파일 업로드 | URL 반환 방식, 프로필 사진/상품 이미지에 사용 |
+| 인증 전달 | MemberAuthFilter → authenticatedLoginId (String) → Facade에서 Member 조회 |
 
 ---
 
 ## 구현 범위
 
-### In Scope
-- Member (기존 유지 + gender, phone, profileImageUrl 추가)
-- Address (배송지 관리)
-- Brand, Product (imageUrl 포함)
-- ProductLike, BrandLike
+### In Scope (구현 완료)
+- Member (loginId, password, name, birthDate, gender, email, phone)
+- Address (배송지 관리, 최대 10개)
+- Brand, Product
+- Like (단일 엔티티, LikeTargetType으로 상품/브랜드 구분)
 - Order, OrderItem (배송지 스냅샷 포함)
 - Admin (LDAP 인증, 브랜드/상품 CUD, 재고 수정, 회원 조회, 주문 조회)
 - 주문 취소, 주문 배송지 수정
-- 파일 업로드 (이미지)
 
-### Out Scope
+### Out of Scope
+- 파일 업로드 (이미지) — profileImageUrl, imageUrl 포함
 - 결제 (PG 연동)
 - 배송 추적 / 배송 상태 관리
 - 환불
