@@ -37,10 +37,10 @@ public class AddressFacade {
             .toList();
     }
 
-    public void update(String loginId, Long addressId, String label, String recipientName, String recipientPhone,
-                       String zipCode, String address1, String address2) {
+    public void updateInfo(String loginId, Long addressId, String label, String recipientName, String recipientPhone,
+                           String zipCode, String address1, String address2) {
         Long memberId = getMemberId(loginId);
-        addressService.update(addressId, memberId, label, recipientName, recipientPhone,
+        addressService.updateInfo(addressId, memberId, label, recipientName, recipientPhone,
             zipCode, address1, address2);
     }
 

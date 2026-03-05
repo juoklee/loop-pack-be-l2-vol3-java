@@ -82,7 +82,7 @@ class BrandTest {
             Brand brand = Brand.create("Nike", "Just Do It");
 
             // Act
-            brand.update("Adidas", "Impossible Is Nothing");
+            brand.updateInfo("Adidas", "Impossible Is Nothing");
 
             // Assert
             assertAll(
@@ -99,7 +99,7 @@ class BrandTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                brand.update(null, "설명");
+                brand.updateInfo(null, "설명");
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -112,7 +112,7 @@ class BrandTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                brand.update("  ", "설명");
+                brand.updateInfo("  ", "설명");
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }

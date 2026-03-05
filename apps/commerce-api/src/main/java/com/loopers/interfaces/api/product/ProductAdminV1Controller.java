@@ -39,7 +39,7 @@ public class ProductAdminV1Controller {
         @PathVariable Long productId,
         @RequestBody ProductV1Dto.UpdateRequest request
     ) {
-        productFacade.update(productId, request.name(), request.description(),
+        productFacade.updateInfo(productId, request.name(), request.description(),
             request.price(), request.maxOrderQuantity());
         return ApiResponse.success(null);
     }

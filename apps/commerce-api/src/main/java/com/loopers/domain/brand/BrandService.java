@@ -32,9 +32,9 @@ public class BrandService {
     }
 
     @Transactional
-    public void update(Long id, String name, String description) {
+    public void updateInfo(Long id, String name, String description) {
         Brand brand = getBrand(id);
-        brand.update(name, description);
+        brand.updateInfo(name, description);
         brandRepository.save(brand);
     }
 

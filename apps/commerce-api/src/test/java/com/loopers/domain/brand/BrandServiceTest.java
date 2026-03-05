@@ -104,7 +104,7 @@ class BrandServiceTest {
             fakeBrandReader.addBrand(1L, brand);
 
             // Act
-            brandService.update(1L, "Adidas", "Impossible Is Nothing");
+            brandService.updateInfo(1L, "Adidas", "Impossible Is Nothing");
 
             // Assert
             assertAll(
@@ -118,7 +118,7 @@ class BrandServiceTest {
         void throwsNotFound_whenNotExists() {
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () -> {
-                brandService.update(999L, "Adidas", "설명");
+                brandService.updateInfo(999L, "Adidas", "설명");
             });
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }

@@ -35,7 +35,7 @@ public class BrandAdminV1Controller {
         @PathVariable Long brandId,
         @RequestBody BrandV1Dto.UpdateRequest request
     ) {
-        brandFacade.update(brandId, request.name(), request.description());
+        brandFacade.updateInfo(brandId, request.name(), request.description());
         return ApiResponse.success(null);
     }
 

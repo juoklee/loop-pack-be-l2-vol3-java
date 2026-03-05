@@ -29,9 +29,9 @@ public class ProductService {
     }
 
     @Transactional
-    public void update(Long id, String name, String description, Long price, int maxOrderQuantity) {
+    public void updateInfo(Long id, String name, String description, Long price, int maxOrderQuantity) {
         Product product = getProduct(id);
-        product.update(name, description, price, maxOrderQuantity);
+        product.updateInfo(name, description, price, maxOrderQuantity);
     }
 
     @Transactional

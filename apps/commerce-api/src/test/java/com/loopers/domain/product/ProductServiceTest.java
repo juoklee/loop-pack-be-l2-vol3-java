@@ -93,7 +93,7 @@ class ProductServiceTest {
             fakeProductReader.addProduct(1L, product);
 
             // Act
-            productService.update(1L, "에어맥스 95", "수정된 설명", 149000L, 3);
+            productService.updateInfo(1L, "에어맥스 95", "수정된 설명", 149000L, 3);
 
             // Assert
             assertAll(
@@ -109,7 +109,7 @@ class ProductServiceTest {
         void throwsNotFound_whenProductNotExists() {
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                productService.update(999L, "이름", "설명", 10000L, 5)
+                productService.updateInfo(999L, "이름", "설명", 10000L, 5)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }

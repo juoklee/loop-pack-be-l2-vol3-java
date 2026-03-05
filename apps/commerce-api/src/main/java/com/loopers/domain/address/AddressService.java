@@ -42,10 +42,10 @@ public class AddressService {
     }
 
     @Transactional
-    public void update(Long id, Long memberId, String label, String recipientName, String recipientPhone,
-                       String zipCode, String address1, String address2) {
+    public void updateInfo(Long id, Long memberId, String label, String recipientName, String recipientPhone,
+                           String zipCode, String address1, String address2) {
         Address address = getAddress(id, memberId);
-        address.update(label, recipientName, recipientPhone, zipCode, address1, address2);
+        address.updateInfo(label, recipientName, recipientPhone, zipCode, address1, address2);
     }
 
     @Transactional

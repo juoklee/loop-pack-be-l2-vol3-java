@@ -58,7 +58,7 @@ public class Address extends BaseEntity {
         return new Address(memberId, label, recipientName, recipientPhone, zipCode, address1, address2, isDefault);
     }
 
-    public void update(String label, String recipientName, String recipientPhone,
+    public void updateInfo(String label, String recipientName, String recipientPhone,
                        String zipCode, String address1, String address2) {
         validateNotBlank(label, "배송지명은 필수입니다.");
         validateNotBlank(recipientName, "수령인 이름은 필수입니다.");

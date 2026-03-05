@@ -115,7 +115,7 @@ class AddressTest {
                 "12345", "서울시 강남구", "101동 202호", true);
 
             // Act
-            address.update("회사", "김철수", "010-9876-5432",
+            address.updateInfo("회사", "김철수", "010-9876-5432",
                 "54321", "서울시 서초구", "301동 402호");
 
             // Assert
@@ -139,7 +139,7 @@ class AddressTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                address.update(null, "홍길동", "010-1234-5678",
+                address.updateInfo(null, "홍길동", "010-1234-5678",
                     "12345", "서울시 강남구", null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
@@ -154,7 +154,7 @@ class AddressTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                address.update("집", "홍길동", "010-1234-5678",
+                address.updateInfo("집", "홍길동", "010-1234-5678",
                     "12345", "  ", null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);

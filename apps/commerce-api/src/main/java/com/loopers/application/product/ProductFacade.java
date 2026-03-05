@@ -54,8 +54,8 @@ public class ProductFacade {
         );
     }
 
-    public void update(Long id, String name, String description, Long price, int maxOrderQuantity) {
-        productService.update(id, name, description, price, maxOrderQuantity);
+    public void updateInfo(Long id, String name, String description, Long price, int maxOrderQuantity) {
+        productService.updateInfo(id, name, description, price, maxOrderQuantity);
     }
 
     public void delete(Long id) {

@@ -51,7 +51,7 @@ public class Product extends BaseEntity {
         return new Product(brandId, name, description, price, stockQuantity, maxOrderQuantity);
     }
 
-    public void update(String name, String description, Long price, int maxOrderQuantity) {
+    public void updateInfo(String name, String description, Long price, int maxOrderQuantity) {
         validateNotBlank(name, "상품명은 필수입니다.");
         validatePositive(price, "가격은 0보다 커야 합니다.");
         validatePositive((long) maxOrderQuantity, "최대 주문 수량은 0보다 커야 합니다.");

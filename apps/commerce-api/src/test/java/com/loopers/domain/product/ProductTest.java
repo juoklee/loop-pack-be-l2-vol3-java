@@ -136,7 +136,7 @@ class ProductTest {
             Product product = Product.create(1L, "에어맥스 90", "설명", 139000L, 100, 5);
 
             // Act
-            product.update("에어맥스 95", "업데이트된 설명", 149000L, 3);
+            product.updateInfo("에어맥스 95", "업데이트된 설명", 149000L, 3);
 
             // Assert
             assertAll(
@@ -156,7 +156,7 @@ class ProductTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                product.update(null, "설명", 149000L, 3)
+                product.updateInfo(null, "설명", 149000L, 3)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -169,7 +169,7 @@ class ProductTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                product.update("에어맥스 95", "설명", 0L, 3)
+                product.updateInfo("에어맥스 95", "설명", 0L, 3)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -182,7 +182,7 @@ class ProductTest {
 
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                product.update("에어맥스 95", "설명", 149000L, 0)
+                product.updateInfo("에어맥스 95", "설명", 149000L, 0)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }

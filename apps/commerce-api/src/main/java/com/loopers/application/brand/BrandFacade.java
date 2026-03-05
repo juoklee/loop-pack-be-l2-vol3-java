@@ -37,8 +37,8 @@ public class BrandFacade {
         );
     }
 
-    public void update(Long id, String name, String description) {
-        brandService.update(id, name, description);
+    public void updateInfo(Long id, String name, String description) {
+        brandService.updateInfo(id, name, description);
     }
 
     @Transactional

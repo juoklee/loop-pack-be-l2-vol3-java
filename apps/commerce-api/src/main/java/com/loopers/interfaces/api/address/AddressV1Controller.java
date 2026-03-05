@@ -55,7 +55,7 @@ public class AddressV1Controller {
         @RequestBody AddressV1Dto.UpdateAddressRequest body
     ) {
         String loginId = AuthUtils.getAuthenticatedLoginId(request);
-        addressFacade.update(
+        addressFacade.updateInfo(
             loginId, addressId, body.label(), body.recipientName(), body.recipientPhone(),
             body.zipCode(), body.address1(), body.address2()
         );

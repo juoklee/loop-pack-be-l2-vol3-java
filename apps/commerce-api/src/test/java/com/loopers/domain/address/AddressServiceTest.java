@@ -159,7 +159,7 @@ class AddressServiceTest {
                 "12345", "서울시 강남구", null);
 
             // Act
-            addressService.update(1L, 1L, "회사", "김철수", "010-9876-5432",
+            addressService.updateInfo(1L, 1L, "회사", "김철수", "010-9876-5432",
                 "54321", "서울시 서초구", "301동");
 
             // Assert
@@ -176,7 +176,7 @@ class AddressServiceTest {
         void throwsNotFound_whenNotExists() {
             // Act & Assert
             CoreException exception = assertThrows(CoreException.class, () ->
-                addressService.update(999L, 1L, "회사", "김철수", "010-9876-5432",
+                addressService.updateInfo(999L, 1L, "회사", "김철수", "010-9876-5432",
                     "54321", "서울시 서초구", null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
