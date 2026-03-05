@@ -31,7 +31,7 @@ public class CouponAdminV1Controller {
         @RequestBody CouponV1Dto.CreateCouponRequest body
     ) {
         CouponInfo info = couponFacade.createCoupon(
-            body.name(), body.type(), body.value(), body.minOrderAmount(), body.expiredAt(), body.totalQuantity()
+            body.name(), body.type(), body.value(), body.minOrderAmount(), body.expiredAt(), body.validDays(), body.totalQuantity()
         );
         return ApiResponse.success(CouponV1Dto.CouponResponse.from(info));
     }
@@ -56,7 +56,7 @@ public class CouponAdminV1Controller {
         @PathVariable Long couponId,
         @RequestBody CouponV1Dto.UpdateCouponRequest body
     ) {
-        couponFacade.updateCoupon(couponId, body.name(), body.value(), body.minOrderAmount(), body.expiredAt());
+        couponFacade.updateCoupon(couponId, body.name(), body.value(), body.minOrderAmount(), body.expiredAt(), body.validDays());
         return ApiResponse.success(null);
     }
 

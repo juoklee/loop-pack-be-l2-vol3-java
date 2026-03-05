@@ -25,7 +25,13 @@ public class CouponService {
 
     @Transactional
     public Coupon createCoupon(String name, CouponType type, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer totalQuantity) {
-        Coupon coupon = Coupon.create(name, type, value, minOrderAmount, expiredAt, totalQuantity);
+        return createCoupon(name, type, value, minOrderAmount, expiredAt, null, totalQuantity);
+    }
+
+    @Transactional
+    public Coupon createCoupon(String name, CouponType type, Long value, Long minOrderAmount,
+                                LocalDateTime expiredAt, Integer validDays, Integer totalQuantity) {
+        Coupon coupon = Coupon.create(name, type, value, minOrderAmount, expiredAt, validDays, totalQuantity);
         return couponRepository.save(coupon);
     }
 
@@ -41,9 +47,9 @@ public class CouponService {
     }
 
     @Transactional
-    public void updateCoupon(Long couponId, String name, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
+    public void updateCoupon(Long couponId, String name, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer validDays) {
         Coupon coupon = getCoupon(couponId);
-        coupon.updateInfo(name, value, minOrderAmount, expiredAt);
+        coupon.updateInfo(name, value, minOrderAmount, expiredAt, validDays);
     }
 
     @Transactional
@@ -67,7 +73,10 @@ public class CouponService {
             });
 
         coupon.issueOne();
-        MemberCoupon memberCoupon = MemberCoupon.create(memberId, couponId);
+        LocalDateTime memberExpiredAt = coupon.getValidDays() != null
+            ? LocalDateTime.now().plusDays(coupon.getValidDays())
+            : coupon.getExpiredAt();
+        MemberCoupon memberCoupon = MemberCoupon.create(memberId, couponId, memberExpiredAt);
         return memberCouponRepository.save(memberCoupon);
     }
 
@@ -96,7 +105,7 @@ public class CouponService {
         Coupon coupon = couponReader.findById(mc.getCouponId())
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "쿠폰을 찾을 수 없습니다."));
 
-        if (coupon.isExpired()) {
+        if (mc.isExpired()) {
             throw new CoreException(ErrorType.BAD_REQUEST, "만료된 쿠폰은 사용할 수 없습니다.");
         }
 

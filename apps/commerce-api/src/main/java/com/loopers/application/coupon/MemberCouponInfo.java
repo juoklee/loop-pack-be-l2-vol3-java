@@ -10,6 +10,7 @@ public record MemberCouponInfo(
     Long couponId,
     String status,
     LocalDateTime usedAt,
+    LocalDateTime expiredAt,
     CouponInfo coupon
 ) {
     public static MemberCouponInfo of(MemberCoupon memberCoupon, CouponInfo couponInfo) {
@@ -19,6 +20,7 @@ public record MemberCouponInfo(
             memberCoupon.getCouponId(),
             memberCoupon.getStatus().name(),
             memberCoupon.getUsedAt(),
+            memberCoupon.getExpiredAt(),
             couponInfo
         );
     }

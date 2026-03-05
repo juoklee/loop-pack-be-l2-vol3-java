@@ -123,7 +123,7 @@ class CouponServiceTest {
             LocalDateTime newExpiredAt = FUTURE.plusDays(10);
 
             // Act
-            couponService.updateCoupon(1L, "수정된 쿠폰", 3000L, 20000L, newExpiredAt);
+            couponService.updateCoupon(1L, "수정된 쿠폰", 3000L, 20000L, newExpiredAt, null);
 
             // Assert
             Coupon updated = couponService.getCoupon(1L);
@@ -138,7 +138,7 @@ class CouponServiceTest {
         @Test
         void throwsNotFound_whenCouponNotExists() {
             CoreException exception = assertThrows(CoreException.class, () ->
-                couponService.updateCoupon(999L, "이름", 3000L, null, FUTURE)
+                couponService.updateCoupon(999L, "이름", 3000L, null, FUTURE, null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }
@@ -226,6 +226,35 @@ class CouponServiceTest {
                 couponService.issueCoupon(1L, 100L)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.CONFLICT);
+        }
+
+        @DisplayName("validDays 쿠폰이면, 발급 시점 + validDays로 개인 만료일이 설정된다.")
+        @Test
+        void setsMemberExpiredAt_whenValidDaysIsSet() {
+            // Arrange — validDays=7인 쿠폰
+            couponService.createCoupon("기간제 쿠폰", CouponType.FIXED, 5000L, null, FUTURE, 7, null);
+
+            // Act
+            MemberCoupon mc = couponService.issueCoupon(1L, 100L);
+
+            // Assert — 개인 만료일이 쿠폰 expiredAt이 아닌 발급시점+7일 근처
+            LocalDateTime expectedAround = LocalDateTime.now().plusDays(7);
+            assertThat(mc.getExpiredAt()).isBefore(FUTURE); // 쿠폰 만료일보다 이전
+            assertThat(mc.getExpiredAt()).isAfter(expectedAround.minusMinutes(1));
+            assertThat(mc.getExpiredAt()).isBefore(expectedAround.plusMinutes(1));
+        }
+
+        @DisplayName("validDays가 없으면, 쿠폰 만료일이 개인 만료일로 설정된다.")
+        @Test
+        void setsCouponExpiredAt_whenValidDaysIsNull() {
+            // Arrange
+            couponService.createCoupon("일반 쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+
+            // Act
+            MemberCoupon mc = couponService.issueCoupon(1L, 100L);
+
+            // Assert
+            assertThat(mc.getExpiredAt()).isEqualTo(FUTURE);
         }
 
         @DisplayName("수량 제한 쿠폰의 수량이 소진되면, BAD_REQUEST 예외가 발생한다.")
@@ -346,13 +375,13 @@ class CouponServiceTest {
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
-        @DisplayName("만료된 쿠폰이면, BAD_REQUEST 예외가 발생한다.")
+        @DisplayName("MemberCoupon이 만료되면, BAD_REQUEST 예외가 발생한다.")
         @Test
-        void throwsBadRequest_whenCouponExpired() {
-            // Arrange — 만료된 쿠폰을 Fake에 직접 세팅
-            Coupon expiredCoupon = Coupon.create("만료 쿠폰", CouponType.FIXED, 5000L, null, PAST);
-            fakeCouponReader.addCoupon(1L, expiredCoupon);
-            MemberCoupon mc = MemberCoupon.create(100L, 1L);
+        void throwsBadRequest_whenMemberCouponExpired() {
+            // Arrange — 쿠폰 자체는 유효하지만 개인 만료일이 지난 상태
+            Coupon coupon = Coupon.create("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+            fakeCouponReader.addCoupon(1L, coupon);
+            MemberCoupon mc = MemberCoupon.create(100L, 1L, PAST); // 개인 만료일이 과거
             fakeMemberCouponReader.addMemberCoupon(1L, mc);
 
             // Act & Assert

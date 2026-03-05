@@ -1031,7 +1031,7 @@ class OrderV1ApiE2ETest {
     }
 
     private Long createCoupon(String name, String type, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
-        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, minOrderAmount, expiredAt, null);
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, minOrderAmount, expiredAt, null, null);
         ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
             "/api-admin/v1/coupons", HttpMethod.POST, adminEntity(request),
             new ParameterizedTypeReference<>() {}

@@ -26,8 +26,9 @@ public class CouponFacade {
 
     // ── Admin ──
 
-    public CouponInfo createCoupon(String name, String type, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer totalQuantity) {
-        Coupon coupon = couponService.createCoupon(name, CouponType.valueOf(type), value, minOrderAmount, expiredAt, totalQuantity);
+    public CouponInfo createCoupon(String name, String type, Long value, Long minOrderAmount,
+                                    LocalDateTime expiredAt, Integer validDays, Integer totalQuantity) {
+        Coupon coupon = couponService.createCoupon(name, CouponType.valueOf(type), value, minOrderAmount, expiredAt, validDays, totalQuantity);
         return CouponInfo.of(coupon);
     }
 
@@ -42,8 +43,8 @@ public class CouponFacade {
         return new PagedInfo<>(infos, result.totalElements(), result.totalPages(), result.page(), result.size());
     }
 
-    public void updateCoupon(Long couponId, String name, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
-        couponService.updateCoupon(couponId, name, value, minOrderAmount, expiredAt);
+    public void updateCoupon(Long couponId, String name, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer validDays) {
+        couponService.updateCoupon(couponId, name, value, minOrderAmount, expiredAt, validDays);
     }
 
     public void deleteCoupon(Long couponId) {

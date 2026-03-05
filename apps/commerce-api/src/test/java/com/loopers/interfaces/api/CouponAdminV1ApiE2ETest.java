@@ -53,7 +53,7 @@ class CouponAdminV1ApiE2ETest {
         @Test
         void returnsCreated_whenFixedCoupon() {
             // Arrange
-            var request = new CouponV1Dto.CreateCouponRequest("5000원 할인", "FIXED", 5000L, null, FUTURE, null);
+            var request = new CouponV1Dto.CreateCouponRequest("5000원 할인", "FIXED", 5000L, null, FUTURE, null, null);
 
             // Act
             ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
@@ -74,7 +74,7 @@ class CouponAdminV1ApiE2ETest {
         @Test
         void returnsCreated_whenRateCoupon() {
             // Arrange
-            var request = new CouponV1Dto.CreateCouponRequest("10% 할인", "RATE", 10L, 30000L, FUTURE, null);
+            var request = new CouponV1Dto.CreateCouponRequest("10% 할인", "RATE", 10L, 30000L, FUTURE, null, null);
 
             // Act
             ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
@@ -94,7 +94,7 @@ class CouponAdminV1ApiE2ETest {
         @DisplayName("이름이 빈 문자열이면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenNameIsBlank() {
-            var request = new CouponV1Dto.CreateCouponRequest("  ", "FIXED", 5000L, null, FUTURE, null);
+            var request = new CouponV1Dto.CreateCouponRequest("  ", "FIXED", 5000L, null, FUTURE, null, null);
 
             ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
                 COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
@@ -108,7 +108,7 @@ class CouponAdminV1ApiE2ETest {
         @Test
         void returnsCreated_whenLimitedCoupon() {
             // Arrange
-            var request = new CouponV1Dto.CreateCouponRequest("선착순 쿠폰", "FIXED", 3000L, null, FUTURE, 100);
+            var request = new CouponV1Dto.CreateCouponRequest("선착순 쿠폰", "FIXED", 3000L, null, FUTURE, null, 100);
 
             // Act
             ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
@@ -124,10 +124,30 @@ class CouponAdminV1ApiE2ETest {
             );
         }
 
+        @DisplayName("validDays가 설정된 기간제 쿠폰을 등록하면, 응답에 validDays가 포함된다.")
+        @Test
+        void returnsCreated_whenValidDaysCoupon() {
+            // Arrange
+            var request = new CouponV1Dto.CreateCouponRequest("기간제 쿠폰", "FIXED", 5000L, null, FUTURE, 7, null);
+
+            // Act
+            ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
+                COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED),
+                () -> assertThat(response.getBody().data().coupon().validDays()).isEqualTo(7),
+                () -> assertThat(response.getBody().data().coupon().totalQuantity()).isNull()
+            );
+        }
+
         @DisplayName("정률 쿠폰의 할인율이 100을 초과하면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenRateExceeds100() {
-            var request = new CouponV1Dto.CreateCouponRequest("쿠폰", "RATE", 101L, null, FUTURE, null);
+            var request = new CouponV1Dto.CreateCouponRequest("쿠폰", "RATE", 101L, null, FUTURE, null, null);
 
             ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
                 COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
@@ -203,7 +223,7 @@ class CouponAdminV1ApiE2ETest {
         @Test
         void returnsOk_whenValidRequest() {
             Long couponId = createCoupon("기존 쿠폰", "FIXED", 5000L);
-            var request = new CouponV1Dto.UpdateCouponRequest("수정된 쿠폰", 3000L, 20000L, FUTURE.plusDays(10));
+            var request = new CouponV1Dto.UpdateCouponRequest("수정된 쿠폰", 3000L, 20000L, FUTURE.plusDays(10), null);
 
             ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
                 COUPON_ADMIN + "/" + couponId, HttpMethod.PUT, adminEntity(request),
@@ -227,7 +247,7 @@ class CouponAdminV1ApiE2ETest {
         @DisplayName("존재하지 않는 쿠폰을 수정하면, 404 Not Found 응답을 받는다.")
         @Test
         void returnsNotFound_whenCouponNotExists() {
-            var request = new CouponV1Dto.UpdateCouponRequest("이름", 3000L, null, FUTURE);
+            var request = new CouponV1Dto.UpdateCouponRequest("이름", 3000L, null, FUTURE, null);
 
             ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
                 COUPON_ADMIN + "/999", HttpMethod.PUT, adminEntity(request),
@@ -306,7 +326,7 @@ class CouponAdminV1ApiE2ETest {
     }
 
     private Long createCoupon(String name, String type, Long value) {
-        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, FUTURE, null);
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, FUTURE, null, null);
         ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
             COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
             new ParameterizedTypeReference<>() {}

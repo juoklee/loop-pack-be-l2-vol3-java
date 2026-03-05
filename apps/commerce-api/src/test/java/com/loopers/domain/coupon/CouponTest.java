@@ -120,6 +120,24 @@ class CouponTest {
             Coupon coupon = Coupon.create("100% 할인", CouponType.RATE, 100L, null, FUTURE);
             assertThat(coupon.getValue()).isEqualTo(100L);
         }
+
+        @DisplayName("validDays가 설정되면, 정상적으로 생성된다.")
+        @Test
+        void createsCoupon_whenValidDaysIsSet() {
+            Coupon coupon = Coupon.create("기간제 쿠폰", CouponType.FIXED, 5000L, null, FUTURE, 7, null);
+
+            assertAll(
+                () -> assertThat(coupon.getValidDays()).isEqualTo(7),
+                () -> assertThat(coupon.getTotalQuantity()).isNull()
+            );
+        }
+
+        @DisplayName("validDays가 null이면, 기본 동작으로 생성된다.")
+        @Test
+        void createsCoupon_whenValidDaysIsNull() {
+            Coupon coupon = Coupon.create("일반 쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+            assertThat(coupon.getValidDays()).isNull();
+        }
     }
 
     @DisplayName("쿠폰을 수정할 때, ")
@@ -134,7 +152,7 @@ class CouponTest {
             LocalDateTime newExpiredAt = FUTURE.plusDays(10);
 
             // Act
-            coupon.updateInfo("수정된 쿠폰", 3000L, 20000L, newExpiredAt);
+            coupon.updateInfo("수정된 쿠폰", 3000L, 20000L, newExpiredAt, 14);
 
             // Assert
             assertAll(
@@ -142,6 +160,7 @@ class CouponTest {
                 () -> assertThat(coupon.getValue()).isEqualTo(3000L),
                 () -> assertThat(coupon.getMinOrderAmount()).isEqualTo(20000L),
                 () -> assertThat(coupon.getExpiredAt()).isEqualTo(newExpiredAt),
+                () -> assertThat(coupon.getValidDays()).isEqualTo(14),
                 () -> assertThat(coupon.getType()).isEqualTo(CouponType.FIXED) // type 변경 불가
             );
         }
@@ -152,7 +171,7 @@ class CouponTest {
             Coupon coupon = Coupon.create("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
 
             CoreException exception = assertThrows(CoreException.class, () ->
-                coupon.updateInfo(null, 3000L, null, FUTURE)
+                coupon.updateInfo(null, 3000L, null, FUTURE, null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -163,7 +182,7 @@ class CouponTest {
             Coupon coupon = Coupon.create("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
 
             CoreException exception = assertThrows(CoreException.class, () ->
-                coupon.updateInfo("쿠폰", 0L, null, FUTURE)
+                coupon.updateInfo("쿠폰", 0L, null, FUTURE, null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -174,7 +193,7 @@ class CouponTest {
             Coupon coupon = Coupon.create("쿠폰", CouponType.RATE, 10L, null, FUTURE);
 
             CoreException exception = assertThrows(CoreException.class, () ->
-                coupon.updateInfo("쿠폰", 101L, null, FUTURE)
+                coupon.updateInfo("쿠폰", 101L, null, FUTURE, null)
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }

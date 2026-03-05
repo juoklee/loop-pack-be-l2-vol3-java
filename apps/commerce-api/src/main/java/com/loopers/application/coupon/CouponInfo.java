@@ -11,6 +11,7 @@ public record CouponInfo(
     Long value,
     Long minOrderAmount,
     LocalDateTime expiredAt,
+    Integer validDays,
     Integer totalQuantity,
     int issuedQuantity
 ) {
@@ -22,6 +23,7 @@ public record CouponInfo(
             coupon.getValue(),
             coupon.getMinOrderAmount(),
             coupon.getExpiredAt(),
+            coupon.getValidDays(),
             coupon.getTotalQuantity(),
             coupon.getIssuedQuantity()
         );

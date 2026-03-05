@@ -17,6 +17,7 @@ public class CouponV1Dto {
         Long value,
         Long minOrderAmount,
         LocalDateTime expiredAt,
+        Integer validDays,
         Integer totalQuantity
     ) {}
 
@@ -24,7 +25,8 @@ public class CouponV1Dto {
         String name,
         Long value,
         Long minOrderAmount,
-        LocalDateTime expiredAt
+        LocalDateTime expiredAt,
+        Integer validDays
     ) {}
 
     // ── Response ──
@@ -37,6 +39,7 @@ public class CouponV1Dto {
             Long value,
             Long minOrderAmount,
             LocalDateTime expiredAt,
+            Integer validDays,
             Integer totalQuantity,
             int issuedQuantity
         ) {}
@@ -45,7 +48,7 @@ public class CouponV1Dto {
             return new CouponResponse(new CouponDto(
                 info.id(), info.name(), info.type(),
                 info.value(), info.minOrderAmount(), info.expiredAt(),
-                info.totalQuantity(), info.issuedQuantity()
+                info.validDays(), info.totalQuantity(), info.issuedQuantity()
             ));
         }
     }
@@ -59,7 +62,7 @@ public class CouponV1Dto {
                 .map(info -> new CouponResponse.CouponDto(
                     info.id(), info.name(), info.type(),
                     info.value(), info.minOrderAmount(), info.expiredAt(),
-                    info.totalQuantity(), info.issuedQuantity()
+                    info.validDays(), info.totalQuantity(), info.issuedQuantity()
                 ))
                 .toList();
             return new CouponListResponse(dtos,
@@ -74,17 +77,18 @@ public class CouponV1Dto {
             Long couponId,
             String status,
             LocalDateTime usedAt,
+            LocalDateTime expiredAt,
             CouponResponse.CouponDto coupon
         ) {}
 
         public static MemberCouponResponse from(MemberCouponInfo info) {
             return new MemberCouponResponse(new MemberCouponDto(
                 info.id(), info.memberId(), info.couponId(),
-                info.status(), info.usedAt(),
+                info.status(), info.usedAt(), info.expiredAt(),
                 new CouponResponse.CouponDto(
                     info.coupon().id(), info.coupon().name(), info.coupon().type(),
                     info.coupon().value(), info.coupon().minOrderAmount(), info.coupon().expiredAt(),
-                    info.coupon().totalQuantity(), info.coupon().issuedQuantity()
+                    info.coupon().validDays(), info.coupon().totalQuantity(), info.coupon().issuedQuantity()
                 )
             ));
         }
@@ -98,11 +102,11 @@ public class CouponV1Dto {
             var dtos = result.content().stream()
                 .map(info -> new MemberCouponResponse.MemberCouponDto(
                     info.id(), info.memberId(), info.couponId(),
-                    info.status(), info.usedAt(),
+                    info.status(), info.usedAt(), info.expiredAt(),
                     new CouponResponse.CouponDto(
                         info.coupon().id(), info.coupon().name(), info.coupon().type(),
                         info.coupon().value(), info.coupon().minOrderAmount(), info.coupon().expiredAt(),
-                        info.coupon().totalQuantity(), info.coupon().issuedQuantity()
+                        info.coupon().validDays(), info.coupon().totalQuantity(), info.coupon().issuedQuantity()
                     )
                 ))
                 .toList();

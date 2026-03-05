@@ -29,6 +29,9 @@ public class MemberCoupon extends BaseEntity {
     @Column(nullable = false)
     private CouponStatus status;
 
+    @Column(name = "expired_at", nullable = false)
+    private LocalDateTime expiredAt;
+
     @Column(name = "used_at")
     private LocalDateTime usedAt;
 
@@ -37,16 +40,18 @@ public class MemberCoupon extends BaseEntity {
 
     protected MemberCoupon() {}
 
-    private MemberCoupon(Long memberId, Long couponId) {
+    private MemberCoupon(Long memberId, Long couponId, LocalDateTime expiredAt) {
         this.memberId = memberId;
         this.couponId = couponId;
+        this.expiredAt = expiredAt;
         this.status = CouponStatus.AVAILABLE;
     }
 
-    public static MemberCoupon create(Long memberId, Long couponId) {
+    public static MemberCoupon create(Long memberId, Long couponId, LocalDateTime expiredAt) {
         validateNotNull(memberId, "회원 ID는 필수입니다.");
         validateNotNull(couponId, "쿠폰 ID는 필수입니다.");
-        return new MemberCoupon(memberId, couponId);
+        validateNotNull(expiredAt, "만료일은 필수입니다.");
+        return new MemberCoupon(memberId, couponId, expiredAt);
     }
 
     public void use() {
@@ -76,6 +81,10 @@ public class MemberCoupon extends BaseEntity {
         return this.status == CouponStatus.AVAILABLE;
     }
 
+    public boolean isExpired() {
+        return LocalDateTime.now().isAfter(this.expiredAt);
+    }
+
     public void validateOwner(Long memberId) {
         if (!this.memberId.equals(memberId)) {
             throw new CoreException(ErrorType.BAD_REQUEST, "쿠폰의 소유자가 아닙니다.");
@@ -94,6 +103,10 @@ public class MemberCoupon extends BaseEntity {
 
     public Long getCouponId() {
         return couponId;
+    }
+
+    public LocalDateTime getExpiredAt() {
+        return expiredAt;
     }
 
     public CouponStatus getStatus() {

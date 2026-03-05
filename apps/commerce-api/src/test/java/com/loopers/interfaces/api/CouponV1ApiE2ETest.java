@@ -123,6 +123,29 @@ class CouponV1ApiE2ETest {
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
 
+        @DisplayName("validDays 쿠폰을 발급하면, 개인 만료일이 설정된다.")
+        @Test
+        void returnsCreated_withPersonalExpiredAt_whenValidDaysCoupon() {
+            // Arrange — validDays=7인 기간제 쿠폰
+            Long couponId = createValidDaysCoupon("기간제 쿠폰", "FIXED", 5000L, FUTURE, 7);
+            registerMember("user1", "Test1234!");
+
+            // Act
+            ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponResponse>> response = testRestTemplate.exchange(
+                "/api/v1/coupons/" + couponId + "/issue", HttpMethod.POST,
+                new HttpEntity<>(authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert — 개인 만료일이 쿠폰 만료일(30일 후)보다 이전(7일 후 근처)
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED),
+                () -> assertThat(response.getBody().data().memberCoupon().expiredAt()).isBefore(FUTURE),
+                () -> assertThat(response.getBody().data().memberCoupon().expiredAt())
+                    .isAfter(LocalDateTime.now().plusDays(6))
+            );
+        }
+
         @DisplayName("이미 발급받은 쿠폰을 다시 발급하면, 409 Conflict 응답을 받는다.")
         @Test
         void returnsConflict_whenAlreadyIssued() {
@@ -227,7 +250,16 @@ class CouponV1ApiE2ETest {
     }
 
     private Long createLimitedCoupon(String name, String type, Long value, LocalDateTime expiredAt, Integer totalQuantity) {
-        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, expiredAt, totalQuantity);
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, expiredAt, null, totalQuantity);
+        ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
+            COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
+            new ParameterizedTypeReference<>() {}
+        );
+        return response.getBody().data().coupon().id();
+    }
+
+    private Long createValidDaysCoupon(String name, String type, Long value, LocalDateTime expiredAt, Integer validDays) {
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, expiredAt, validDays, null);
         ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
             COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
             new ParameterizedTypeReference<>() {}
@@ -236,7 +268,7 @@ class CouponV1ApiE2ETest {
     }
 
     private Long createCoupon(String name, String type, Long value, LocalDateTime expiredAt) {
-        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, expiredAt, null);
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, null, expiredAt, null, null);
         ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
             COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
             new ParameterizedTypeReference<>() {}

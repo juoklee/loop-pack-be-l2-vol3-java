@@ -31,6 +31,9 @@ public class Coupon extends BaseEntity {
     @Column(name = "expired_at", nullable = false)
     private LocalDateTime expiredAt;
 
+    @Column(name = "valid_days")
+    private Integer validDays;
+
     @Column(name = "total_quantity")
     private Integer totalQuantity;
 
@@ -39,21 +42,29 @@ public class Coupon extends BaseEntity {
 
     protected Coupon() {}
 
-    private Coupon(String name, CouponType type, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer totalQuantity) {
+    private Coupon(String name, CouponType type, Long value, Long minOrderAmount,
+                   LocalDateTime expiredAt, Integer validDays, Integer totalQuantity) {
         this.name = name;
         this.type = type;
         this.value = value;
         this.minOrderAmount = minOrderAmount;
         this.expiredAt = expiredAt;
+        this.validDays = validDays;
         this.totalQuantity = totalQuantity;
         this.issuedQuantity = 0;
     }
 
     public static Coupon create(String name, CouponType type, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
-        return create(name, type, value, minOrderAmount, expiredAt, null);
+        return create(name, type, value, minOrderAmount, expiredAt, null, null);
     }
 
-    public static Coupon create(String name, CouponType type, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer totalQuantity) {
+    public static Coupon create(String name, CouponType type, Long value, Long minOrderAmount,
+                                LocalDateTime expiredAt, Integer totalQuantity) {
+        return create(name, type, value, minOrderAmount, expiredAt, null, totalQuantity);
+    }
+
+    public static Coupon create(String name, CouponType type, Long value, Long minOrderAmount,
+                                LocalDateTime expiredAt, Integer validDays, Integer totalQuantity) {
         validateNotBlank(name, "쿠폰명은 필수입니다.");
         validateNotNull(type, "쿠폰 타입은 필수입니다.");
         validatePositive(value, "할인 값은 0보다 커야 합니다.");
@@ -61,7 +72,7 @@ public class Coupon extends BaseEntity {
         if (type == CouponType.RATE && value > 100) {
             throw new CoreException(ErrorType.BAD_REQUEST, "정률 할인은 100%를 초과할 수 없습니다.");
         }
-        return new Coupon(name, type, value, minOrderAmount, expiredAt, totalQuantity);
+        return new Coupon(name, type, value, minOrderAmount, expiredAt, validDays, totalQuantity);
     }
 
     public void issueOne() {
@@ -71,7 +82,7 @@ public class Coupon extends BaseEntity {
         this.issuedQuantity++;
     }
 
-    public void updateInfo(String name, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
+    public void updateInfo(String name, Long value, Long minOrderAmount, LocalDateTime expiredAt, Integer validDays) {
         validateNotBlank(name, "쿠폰명은 필수입니다.");
         validatePositive(value, "할인 값은 0보다 커야 합니다.");
         validateNotNull(expiredAt, "만료일은 필수입니다.");
@@ -82,6 +93,7 @@ public class Coupon extends BaseEntity {
         this.value = value;
         this.minOrderAmount = minOrderAmount;
         this.expiredAt = expiredAt;
+        this.validDays = validDays;
     }
 
     public long calculateDiscount(long orderAmount) {
@@ -138,6 +150,10 @@ public class Coupon extends BaseEntity {
 
     public LocalDateTime getExpiredAt() {
         return expiredAt;
+    }
+
+    public Integer getValidDays() {
+        return validDays;
     }
 
     public Integer getTotalQuantity() {
