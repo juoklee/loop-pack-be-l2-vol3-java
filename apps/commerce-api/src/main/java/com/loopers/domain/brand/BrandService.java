@@ -46,17 +46,13 @@ public class BrandService {
     }
 
     @Transactional
-    public int increaseLikeCount(Long id) {
-        Brand brand = getBrand(id);
-        brand.increaseLikeCount();
-        return brand.getLikeCount();
+    public void increaseLikeCount(Long id) {
+        brandRepository.increaseLikeCount(id);
     }
 
     @Transactional
-    public int decreaseLikeCount(Long id) {
-        Brand brand = getBrand(id);
-        brand.decreaseLikeCount();
-        return brand.getLikeCount();
+    public void decreaseLikeCount(Long id) {
+        brandRepository.decreaseLikeCount(id);
     }
 
     @Transactional(readOnly = true)

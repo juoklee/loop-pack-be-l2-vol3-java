@@ -14,4 +14,14 @@ public class BrandRepositoryImpl implements BrandRepository {
     public Brand save(Brand brand) {
         return brandJpaRepository.save(brand);
     }
+
+    @Override
+    public int increaseLikeCount(Long id) {
+        return brandJpaRepository.increaseLikeCount(id);
+    }
+
+    @Override
+    public int decreaseLikeCount(Long id) {
+        return brandJpaRepository.decreaseLikeCount(id);
+    }
 }

@@ -229,5 +229,15 @@ class BrandServiceTest {
             brands.put(idSequence++, brand);
             return brand;
         }
+
+        @Override
+        public int increaseLikeCount(Long id) {
+            return 1;
+        }
+
+        @Override
+        public int decreaseLikeCount(Long id) {
+            return 1;
+        }
     }
 }

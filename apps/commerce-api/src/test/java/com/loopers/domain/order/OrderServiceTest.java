@@ -320,6 +320,11 @@ class OrderServiceTest {
         }
 
         @Override
+        public Optional<Order> findByIdAndMemberIdForUpdate(Long id, Long memberId) {
+            return findByIdAndMemberId(id, memberId);
+        }
+
+        @Override
         public PageResult<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, int page, int size) {
             List<Order> filtered = orders.stream()
                 .filter(o -> o.getMemberId().equals(memberId))

@@ -36,11 +36,14 @@ public class LikeFacade {
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.PRODUCT, productId);
 
-        int likeCount = liked
-            ? productService.increaseLikeCount(productId)
-            : productService.decreaseLikeCount(productId);
+        if (liked) {
+            productService.increaseLikeCount(productId);
+        } else {
+            productService.decreaseLikeCount(productId);
+        }
 
-        return new LikeToggleInfo(liked, likeCount);
+        Product product = productService.getProduct(productId);
+        return new LikeToggleInfo(liked, product.getLikeCount());
     }
 
     @Transactional
@@ -50,11 +53,14 @@ public class LikeFacade {
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.BRAND, brandId);
 
-        int likeCount = liked
-            ? brandService.increaseLikeCount(brandId)
-            : brandService.decreaseLikeCount(brandId);
+        if (liked) {
+            brandService.increaseLikeCount(brandId);
+        } else {
+            brandService.decreaseLikeCount(brandId);
+        }
 
-        return new LikeToggleInfo(liked, likeCount);
+        Brand brand = brandService.getBrand(brandId);
+        return new LikeToggleInfo(liked, brand.getLikeCount());
     }
 
     @Transactional(readOnly = true)

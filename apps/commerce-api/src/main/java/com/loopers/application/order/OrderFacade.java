@@ -17,6 +17,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -49,11 +50,15 @@ public class OrderFacade {
         long originalAmount = 0L;
         List<OrderService.OrderItemCommand> commands = new java.util.ArrayList<>();
 
-        for (Map.Entry<Long, Integer> entry : mergedItems.entrySet()) {
+        List<Map.Entry<Long, Integer>> sortedEntries = mergedItems.entrySet().stream()
+            .sorted(Comparator.comparingLong(Map.Entry::getKey))
+            .toList();
+
+        for (Map.Entry<Long, Integer> entry : sortedEntries) {
             Long productId = entry.getKey();
             int quantity = entry.getValue();
 
-            Product product = productService.getProduct(productId);
+            Product product = productService.getProductForUpdate(productId);
             product.validateOrderQuantity(quantity);
             product.decreaseStock(quantity);
 
@@ -94,9 +99,13 @@ public class OrderFacade {
         // 소유권 검증 + 취소 상태 체크 + 상태 전이 (도메인 규칙)
         List<OrderItem> items = orderService.cancelOrder(orderId, memberId);
 
-        // 재고 복원 (cross-domain orchestration)
-        for (OrderItem item : items) {
-            Product product = productService.getProduct(item.getProductId());
+        // 재고 복원 (cross-domain orchestration) — productId 순 정렬로 데드락 방지
+        List<OrderItem> sortedItems = items.stream()
+            .sorted(Comparator.comparingLong(OrderItem::getProductId))
+            .toList();
+
+        for (OrderItem item : sortedItems) {
+            Product product = productService.getProductForUpdate(item.getProductId());
             product.increaseStock(item.getQuantity());
         }
 

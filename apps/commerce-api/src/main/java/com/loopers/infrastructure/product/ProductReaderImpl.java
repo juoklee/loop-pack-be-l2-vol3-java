@@ -30,6 +30,11 @@ public class ProductReaderImpl implements ProductReader {
     }
 
     @Override
+    public Optional<Product> findByIdForUpdate(Long id) {
+        return productJpaRepository.findByIdForUpdate(id);
+    }
+
+    @Override
     public PageResult<Product> findAll(String keyword, Long brandId, ProductSortType sort, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         QProduct product = QProduct.product;

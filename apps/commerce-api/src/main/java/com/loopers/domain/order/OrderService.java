@@ -102,7 +102,7 @@ public class OrderService {
 
     @Transactional
     public List<OrderItem> cancelOrder(Long orderId, Long memberId) {
-        Order order = orderReader.findByIdAndMemberId(orderId, memberId)
+        Order order = orderReader.findByIdAndMemberIdForUpdate(orderId, memberId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다."));
 
         if (order.getStatus() == OrderStatus.CANCELLED) {

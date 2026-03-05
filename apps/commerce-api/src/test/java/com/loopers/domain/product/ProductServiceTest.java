@@ -251,6 +251,11 @@ class ProductServiceTest {
         }
 
         @Override
+        public Optional<Product> findByIdForUpdate(Long id) {
+            return Optional.ofNullable(products.get(id));
+        }
+
+        @Override
         public PageResult<Product> findAll(String keyword, Long brandId, ProductSortType sort, int page, int size) {
             return new PageResult<>(allProducts, allProducts.size(), 1, page, size);
         }
@@ -284,6 +289,16 @@ class ProductServiceTest {
             products.put(id, product);
             fakeProductReader.addProduct(id, product);
             return product;
+        }
+
+        @Override
+        public int increaseLikeCount(Long id) {
+            return 1;
+        }
+
+        @Override
+        public int decreaseLikeCount(Long id) {
+            return 1;
         }
     }
 }

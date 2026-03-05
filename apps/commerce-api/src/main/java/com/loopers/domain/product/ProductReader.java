@@ -7,6 +7,7 @@ import java.util.Optional;
 
 public interface ProductReader {
     Optional<Product> findById(Long id);
+    Optional<Product> findByIdForUpdate(Long id);
     PageResult<Product> findAll(String keyword, Long brandId, ProductSortType sort, int page, int size);
     List<Product> findAllByIds(List<Long> ids);
     List<Product> findAllByBrandId(Long brandId);

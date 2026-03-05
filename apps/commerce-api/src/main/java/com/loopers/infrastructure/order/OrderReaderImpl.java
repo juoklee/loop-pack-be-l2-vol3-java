@@ -35,6 +35,11 @@ public class OrderReaderImpl implements OrderReader {
     }
 
     @Override
+    public Optional<Order> findByIdAndMemberIdForUpdate(Long id, Long memberId) {
+        return orderJpaRepository.findByIdAndMemberIdForUpdate(id, memberId);
+    }
+
+    @Override
     public PageResult<Order> findAllByMemberId(Long memberId, LocalDate startAt, LocalDate endAt, int page, int size) {
         Pageable pageable = PageRequest.of(page, size);
         QOrder order = QOrder.order;
