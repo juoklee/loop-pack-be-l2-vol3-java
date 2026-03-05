@@ -287,6 +287,144 @@ class CouponServiceTest {
         }
     }
 
+    @DisplayName("쿠폰을 사용할 때, ")
+    @Nested
+    class UseCoupon {
+
+        @DisplayName("유효한 쿠폰이면, 할인액을 반환하고 USED 상태로 변경된다.")
+        @Test
+        void returnsCouponApplyResult_whenValid() {
+            // Arrange
+            couponService.createCoupon("5000원 할인", CouponType.FIXED, 5000L, null, FUTURE);
+            MemberCoupon mc = couponService.issueCoupon(1L, 100L);
+
+            // Act
+            CouponService.CouponApplyResult result = couponService.useCoupon(1L, 100L, 50000L);
+
+            // Assert
+            assertAll(
+                () -> assertThat(result.discountAmount()).isEqualTo(5000L),
+                () -> assertThat(mc.getStatus()).isEqualTo(CouponStatus.USED),
+                () -> assertThat(mc.getUsedAt()).isNotNull()
+            );
+        }
+
+        @DisplayName("정률 쿠폰이면, 주문 금액 기준으로 할인액을 계산한다.")
+        @Test
+        void calculatesRateDiscount_whenRateCoupon() {
+            // Arrange
+            couponService.createCoupon("10% 할인", CouponType.RATE, 10L, null, FUTURE);
+            couponService.issueCoupon(1L, 100L);
+
+            // Act
+            CouponService.CouponApplyResult result = couponService.useCoupon(1L, 100L, 80000L);
+
+            // Assert
+            assertThat(result.discountAmount()).isEqualTo(8000L);
+        }
+
+        @DisplayName("존재하지 않는 memberCouponId이면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenMemberCouponNotExists() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.useCoupon(999L, 100L, 50000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+
+        @DisplayName("다른 사용자의 쿠폰이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenNotOwner() {
+            // Arrange
+            couponService.createCoupon("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+            couponService.issueCoupon(1L, 100L);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.useCoupon(1L, 200L, 50000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("만료된 쿠폰이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenCouponExpired() {
+            // Arrange — 만료된 쿠폰을 Fake에 직접 세팅
+            Coupon expiredCoupon = Coupon.create("만료 쿠폰", CouponType.FIXED, 5000L, null, PAST);
+            fakeCouponReader.addCoupon(1L, expiredCoupon);
+            MemberCoupon mc = MemberCoupon.create(100L, 1L);
+            fakeMemberCouponReader.addMemberCoupon(1L, mc);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.useCoupon(1L, 100L, 50000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("이미 사용된 쿠폰이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenAlreadyUsed() {
+            // Arrange
+            couponService.createCoupon("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+            couponService.issueCoupon(1L, 100L);
+            couponService.useCoupon(1L, 100L, 50000L);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.useCoupon(1L, 100L, 50000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("최소 주문 금액 미달이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenBelowMinOrderAmount() {
+            // Arrange
+            couponService.createCoupon("쿠폰", CouponType.FIXED, 5000L, 50000L, FUTURE);
+            couponService.issueCoupon(1L, 100L);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.useCoupon(1L, 100L, 30000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("쿠폰을 복원할 때, ")
+    @Nested
+    class RestoreCoupon {
+
+        @DisplayName("사용된 쿠폰이면, AVAILABLE로 복원된다.")
+        @Test
+        void restoresCoupon_whenUsed() {
+            // Arrange
+            couponService.createCoupon("쿠폰", CouponType.FIXED, 5000L, null, FUTURE);
+            couponService.issueCoupon(1L, 100L);
+            couponService.useCoupon(1L, 100L, 50000L);
+
+            // Act
+            couponService.restoreCoupon(1L);
+
+            // Assert
+            MemberCoupon mc = couponService.getMemberCoupon(1L);
+            assertAll(
+                () -> assertThat(mc.getStatus()).isEqualTo(CouponStatus.AVAILABLE),
+                () -> assertThat(mc.getUsedAt()).isNull()
+            );
+        }
+
+        @DisplayName("존재하지 않는 memberCouponId이면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenMemberCouponNotExists() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                couponService.restoreCoupon(999L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+    }
+
     // ── Fake 구현체 ──
 
     static class FakeCouponReader implements CouponReader {

@@ -29,6 +29,15 @@ public class OrderService {
     }
 
     @Transactional
+    public Order createOrder(Long memberId, String recipientName, String recipientPhone,
+                             String zipCode, String address1, String address2, Long totalAmount,
+                             Long memberCouponId, Long originalAmount, Long discountAmount) {
+        Order order = Order.create(memberId, recipientName, recipientPhone, zipCode, address1, address2,
+                                   totalAmount, memberCouponId, originalAmount, discountAmount);
+        return orderRepository.save(order);
+    }
+
+    @Transactional
     public List<OrderItem> createOrderItems(Long orderId, List<OrderItemCommand> commands) {
         List<OrderItem> items = commands.stream()
             .map(cmd -> OrderItem.create(orderId, cmd.productId(), cmd.productName(), cmd.productPrice(), cmd.quantity()))
@@ -82,6 +91,16 @@ public class OrderService {
         return merged;
     }
 
+    @Transactional
+    public Order updateShippingAddress(Long orderId, Long memberId,
+                                        String recipientName, String recipientPhone,
+                                        String zipCode, String address1, String address2) {
+        Order order = getOrderForMember(orderId, memberId);
+        order.updateShippingAddress(recipientName, recipientPhone, zipCode, address1, address2);
+        return order;
+    }
+
+    @Transactional
     public List<OrderItem> cancelOrder(Long orderId, Long memberId) {
         Order order = orderReader.findByIdAndMemberId(orderId, memberId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다."));

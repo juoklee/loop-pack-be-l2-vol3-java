@@ -77,6 +77,41 @@ class OrderTest {
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
+
+        @DisplayName("쿠폰을 적용한 주문이면, 쿠폰 관련 필드가 설정된다.")
+        @Test
+        void createsOrder_withCouponFields() {
+            // Arrange & Act
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345",
+                "서울시 강남구", null, 95000L,
+                10L, 100000L, 5000L
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(order.getTotalAmount()).isEqualTo(95000L),
+                () -> assertThat(order.getMemberCouponId()).isEqualTo(10L),
+                () -> assertThat(order.getOriginalAmount()).isEqualTo(100000L),
+                () -> assertThat(order.getDiscountAmount()).isEqualTo(5000L)
+            );
+        }
+
+        @DisplayName("쿠폰 미적용 주문이면, 쿠폰 관련 필드가 null이다.")
+        @Test
+        void createsOrder_withoutCouponFields() {
+            // Arrange & Act
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(order.getMemberCouponId()).isNull(),
+                () -> assertThat(order.getOriginalAmount()).isNull(),
+                () -> assertThat(order.getDiscountAmount()).isNull()
+            );
+        }
     }
 
     @DisplayName("주문을 취소할 때, ")

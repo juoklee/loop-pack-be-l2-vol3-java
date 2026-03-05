@@ -64,6 +64,14 @@ public class MemberCoupon extends BaseEntity {
         this.status = CouponStatus.EXPIRED;
     }
 
+    public void restore() {
+        if (this.status != CouponStatus.USED) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "사용된 쿠폰만 복원할 수 있습니다.");
+        }
+        this.status = CouponStatus.AVAILABLE;
+        this.usedAt = null;
+    }
+
     public boolean isUsable() {
         return this.status == CouponStatus.AVAILABLE;
     }

@@ -148,6 +148,47 @@ class MemberCouponTest {
         }
     }
 
+    @DisplayName("쿠폰을 복원할 때, ")
+    @Nested
+    class Restore {
+
+        @DisplayName("USED 상태이면, AVAILABLE로 변경되고 사용 시간이 초기화된다.")
+        @Test
+        void changesStatusToAvailable_whenUsed() {
+            // Arrange
+            MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L);
+            memberCoupon.use();
+
+            // Act
+            memberCoupon.restore();
+
+            // Assert
+            assertAll(
+                () -> assertThat(memberCoupon.getStatus()).isEqualTo(CouponStatus.AVAILABLE),
+                () -> assertThat(memberCoupon.getUsedAt()).isNull()
+            );
+        }
+
+        @DisplayName("AVAILABLE 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenAvailable() {
+            MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L);
+
+            CoreException exception = assertThrows(CoreException.class, memberCoupon::restore);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("EXPIRED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenExpired() {
+            MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L);
+            memberCoupon.expire();
+
+            CoreException exception = assertThrows(CoreException.class, memberCoupon::restore);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
     @DisplayName("사용 가능 여부를 확인할 때, ")
     @Nested
     class IsUsable {

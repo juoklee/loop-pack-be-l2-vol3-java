@@ -2,6 +2,7 @@ package com.loopers.interfaces.api;
 
 import com.loopers.interfaces.api.address.AddressV1Dto;
 import com.loopers.interfaces.api.brand.BrandV1Dto;
+import com.loopers.interfaces.api.coupon.CouponV1Dto;
 import com.loopers.interfaces.api.member.MemberV1Dto;
 import com.loopers.interfaces.api.order.OrderV1Dto;
 import com.loopers.interfaces.api.product.ProductV1Dto;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -60,7 +62,7 @@ class OrderV1ApiE2ETest {
             Long addressId = registerAddress("user1", "Test1234!");
 
             var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 2));
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -104,7 +106,7 @@ class OrderV1ApiE2ETest {
                 new OrderV1Dto.CreateOrderRequest.OrderItemRequest(product1, 1),
                 new OrderV1Dto.CreateOrderRequest.OrderItemRequest(product2, 2)
             );
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -135,7 +137,7 @@ class OrderV1ApiE2ETest {
                 new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 2),
                 new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 3)
             );
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -164,7 +166,7 @@ class OrderV1ApiE2ETest {
             Long addressId = registerAddress("user1", "Test1234!");
 
             var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 4));
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -197,7 +199,7 @@ class OrderV1ApiE2ETest {
             Long addressId = registerAddress("user1", "Test1234!");
 
             var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 4));
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -220,7 +222,7 @@ class OrderV1ApiE2ETest {
             Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
 
             var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
-            var request = new OrderV1Dto.CreateOrderRequest(9999L, items);
+            var request = new OrderV1Dto.CreateOrderRequest(9999L, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -241,7 +243,7 @@ class OrderV1ApiE2ETest {
             registerMember("user1", "Test1234!");
             Long addressId = registerAddress("user1", "Test1234!");
 
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, List.of());
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, List.of());
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -265,7 +267,7 @@ class OrderV1ApiE2ETest {
             Long addressId = registerAddress("user1", "Test1234!");
 
             var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 0));
-            var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
 
             // Act
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
@@ -283,7 +285,7 @@ class OrderV1ApiE2ETest {
         @Test
         void returnsUnauthorized_whenNoAuth() {
             // Act
-            var request = new OrderV1Dto.CreateOrderRequest(1L, List.of());
+            var request = new OrderV1Dto.CreateOrderRequest(1L, null, List.of());
             ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
                 "/api/v1/orders",
                 HttpMethod.POST,
@@ -693,6 +695,240 @@ class OrderV1ApiE2ETest {
         }
     }
 
+    @DisplayName("POST /api/v1/orders (쿠폰 적용 주문)")
+    @Nested
+    class CreateOrderWithCoupon {
+
+        private static final LocalDateTime FUTURE = LocalDateTime.now().plusDays(30);
+
+        @DisplayName("정액 쿠폰 적용 시, 할인 금액만큼 차감된 totalAmount로 주문이 생성된다.")
+        @Test
+        void createsOrder_withFixedCoupon() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("5000원 할인", "FIXED", 5000L, null, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user1", "Test1234!", couponId);
+
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 2));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items);
+
+            // Act
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
+                () -> assertThat(response.getBody().data().order().totalAmount()).isEqualTo(273000L),
+                () -> assertThat(response.getBody().data().order().originalAmount()).isEqualTo(278000L),
+                () -> assertThat(response.getBody().data().order().discountAmount()).isEqualTo(5000L),
+                () -> assertThat(response.getBody().data().order().memberCouponId()).isEqualTo(memberCouponId)
+            );
+        }
+
+        @DisplayName("정률 쿠폰 적용 시, 주문 금액 비율로 할인된다.")
+        @Test
+        void createsOrder_withRateCoupon() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 100000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("10% 할인", "RATE", 10L, null, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user1", "Test1234!", couponId);
+
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items);
+
+            // Act
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
+                () -> assertThat(response.getBody().data().order().totalAmount()).isEqualTo(90000L),
+                () -> assertThat(response.getBody().data().order().originalAmount()).isEqualTo(100000L),
+                () -> assertThat(response.getBody().data().order().discountAmount()).isEqualTo(10000L)
+            );
+        }
+
+        @DisplayName("존재하지 않는 memberCouponId로 주문하면, 404를 반환한다.")
+        @Test
+        void returnsNotFound_whenMemberCouponNotExists() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, 9999L, items);
+
+            // Act
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+
+            // 재고 롤백 확인
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+        }
+
+        @DisplayName("이미 사용된 쿠폰으로 주문하면, 400을 반환하고 재고가 롤백된다.")
+        @Test
+        void returnsBadRequest_whenCouponAlreadyUsed() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("쿠폰", "FIXED", 5000L, null, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user1", "Test1234!", couponId);
+
+            // 첫 번째 주문으로 쿠폰 사용
+            var items1 = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request1 = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items1);
+            testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request1, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<ApiResponse<OrderV1Dto.OrderResponse>>() {}
+            );
+
+            // Act — 같은 쿠폰으로 두 번째 주문
+            var items2 = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request2 = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items2);
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request2, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+
+            // 재고 롤백 확인 (첫 주문으로 1개 차감 → 99개여야 함)
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(99);
+        }
+
+        @DisplayName("최소 주문 금액 미달 시, 400을 반환한다.")
+        @Test
+        void returnsBadRequest_whenBelowMinOrderAmount() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("쿠폰", "FIXED", 5000L, 50000L, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user1", "Test1234!", couponId);
+
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items);
+
+            // Act
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @DisplayName("타인의 쿠폰으로 주문하면, 400을 반환한다.")
+        @Test
+        void returnsBadRequest_whenNotCouponOwner() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            registerMember("user2", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            Long addressId1 = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("쿠폰", "FIXED", 5000L, null, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user2", "Test1234!", couponId);
+
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId1, memberCouponId, items);
+
+            // Act — user1이 user2의 쿠폰으로 주문
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
+        @DisplayName("쿠폰 적용 주문 취소 시, 쿠폰이 복원되고 재고가 복원된다.")
+        @Test
+        void restoresCouponAndStock_whenCouponOrderCancelled() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            Long addressId = registerAddress("user1", "Test1234!");
+            Long couponId = createCoupon("5000원 할인", "FIXED", 5000L, null, FUTURE);
+            Long memberCouponId = issueCouponAndGetId("user1", "Test1234!", couponId);
+            HttpHeaders headers = authHeaders("user1", "Test1234!");
+
+            // 쿠폰 적용 주문 생성
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 2));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, memberCouponId, items);
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> orderResponse = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, headers),
+                new ParameterizedTypeReference<>() {}
+            );
+            Long orderId = orderResponse.getBody().data().order().id();
+
+            // Act — 주문 취소
+            testRestTemplate.exchange(
+                "/api/v1/orders/" + orderId + "/cancel", HttpMethod.POST,
+                new HttpEntity<>(headers),
+                new ParameterizedTypeReference<ApiResponse<Object>>() {}
+            );
+
+            // Assert — 재고 복원 확인
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+
+            // Assert — 쿠폰 복원 확인 (AVAILABLE 상태)
+            ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponListResponse>> couponResponse = testRestTemplate.exchange(
+                "/api/v1/users/me/coupons", HttpMethod.GET,
+                new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(couponResponse.getBody().data().memberCoupons().get(0).status()).isEqualTo("AVAILABLE");
+        }
+    }
+
     // --- Helper Methods ---
 
     private void registerMember(String loginId, String password) {
@@ -745,7 +981,7 @@ class OrderV1ApiE2ETest {
 
     private void createOrder(HttpHeaders headers, Long addressId,
                              List<OrderV1Dto.CreateOrderRequest.OrderItemRequest> items) {
-        var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+        var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
         testRestTemplate.exchange(
             "/api/v1/orders",
             HttpMethod.POST,
@@ -756,7 +992,7 @@ class OrderV1ApiE2ETest {
 
     private Long createOrderAndGetId(HttpHeaders headers, Long addressId,
                                      List<OrderV1Dto.CreateOrderRequest.OrderItemRequest> items) {
-        var request = new OrderV1Dto.CreateOrderRequest(addressId, items);
+        var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
         ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
             "/api/v1/orders",
             HttpMethod.POST,
@@ -792,5 +1028,23 @@ class OrderV1ApiE2ETest {
 
     private <T> HttpEntity<T> adminEntity(T body) {
         return new HttpEntity<>(body, adminHeaders());
+    }
+
+    private Long createCoupon(String name, String type, Long value, Long minOrderAmount, LocalDateTime expiredAt) {
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, minOrderAmount, expiredAt, null);
+        ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
+            "/api-admin/v1/coupons", HttpMethod.POST, adminEntity(request),
+            new ParameterizedTypeReference<>() {}
+        );
+        return response.getBody().data().coupon().id();
+    }
+
+    private Long issueCouponAndGetId(String loginId, String password, Long couponId) {
+        ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponResponse>> response = testRestTemplate.exchange(
+            "/api/v1/coupons/" + couponId + "/issue", HttpMethod.POST,
+            new HttpEntity<>(authHeaders(loginId, password)),
+            new ParameterizedTypeReference<>() {}
+        );
+        return response.getBody().data().memberCoupon().id();
     }
 }

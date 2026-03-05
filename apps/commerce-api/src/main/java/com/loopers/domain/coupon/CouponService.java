@@ -86,4 +86,33 @@ public class CouponService {
     public PageResult<MemberCoupon> getIssuedCoupons(Long couponId, int page, int size) {
         return memberCouponReader.findAllByCouponId(couponId, page, size);
     }
+
+    @Transactional
+    public CouponApplyResult useCoupon(Long memberCouponId, Long memberId, long orderAmount) {
+        MemberCoupon mc = memberCouponReader.findById(memberCouponId)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "사용자 쿠폰을 찾을 수 없습니다."));
+        mc.validateOwner(memberId);
+
+        Coupon coupon = couponReader.findById(mc.getCouponId())
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "쿠폰을 찾을 수 없습니다."));
+
+        if (coupon.isExpired()) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "만료된 쿠폰은 사용할 수 없습니다.");
+        }
+
+        coupon.validateMinOrderAmount(orderAmount);
+        long discount = coupon.calculateDiscount(orderAmount);
+        mc.use();
+
+        return new CouponApplyResult(coupon.getId(), mc.getId(), discount);
+    }
+
+    @Transactional
+    public void restoreCoupon(Long memberCouponId) {
+        MemberCoupon mc = memberCouponReader.findById(memberCouponId)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "사용자 쿠폰을 찾을 수 없습니다."));
+        mc.restore();
+    }
+
+    public record CouponApplyResult(Long couponId, Long memberCouponId, long discountAmount) {}
 }

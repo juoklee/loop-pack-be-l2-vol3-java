@@ -34,6 +34,15 @@ public class Order extends BaseEntity {
     @Column(name = "total_amount", nullable = false)
     private Long totalAmount;
 
+    @Column(name = "member_coupon_id")
+    private Long memberCouponId;
+
+    @Column(name = "original_amount")
+    private Long originalAmount;
+
+    @Column(name = "discount_amount")
+    private Long discountAmount;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
     private OrderStatus status;
@@ -41,7 +50,8 @@ public class Order extends BaseEntity {
     protected Order() {}
 
     private Order(Long memberId, String recipientName, String recipientPhone,
-                  String zipCode, String address1, String address2, Long totalAmount) {
+                  String zipCode, String address1, String address2, Long totalAmount,
+                  Long memberCouponId, Long originalAmount, Long discountAmount) {
         this.memberId = memberId;
         this.recipientName = recipientName;
         this.recipientPhone = recipientPhone;
@@ -49,18 +59,29 @@ public class Order extends BaseEntity {
         this.address1 = address1;
         this.address2 = address2;
         this.totalAmount = totalAmount;
+        this.memberCouponId = memberCouponId;
+        this.originalAmount = originalAmount;
+        this.discountAmount = discountAmount;
         this.status = OrderStatus.COMPLETED;
     }
 
     public static Order create(Long memberId, String recipientName, String recipientPhone,
                                String zipCode, String address1, String address2, Long totalAmount) {
+        return create(memberId, recipientName, recipientPhone, zipCode, address1, address2,
+                      totalAmount, null, null, null);
+    }
+
+    public static Order create(Long memberId, String recipientName, String recipientPhone,
+                               String zipCode, String address1, String address2, Long totalAmount,
+                               Long memberCouponId, Long originalAmount, Long discountAmount) {
         validateNotNull(memberId, "회원 ID는 필수입니다.");
         validateNotBlank(recipientName, "수령인 이름은 필수입니다.");
         validateNotBlank(recipientPhone, "수령인 전화번호는 필수입니다.");
         validateNotBlank(zipCode, "우편번호는 필수입니다.");
         validateNotBlank(address1, "기본주소는 필수입니다.");
         validatePositive(totalAmount, "주문 총액은 0보다 커야 합니다.");
-        return new Order(memberId, recipientName, recipientPhone, zipCode, address1, address2, totalAmount);
+        return new Order(memberId, recipientName, recipientPhone, zipCode, address1, address2,
+                         totalAmount, memberCouponId, originalAmount, discountAmount);
     }
 
     public void cancel() {
@@ -130,6 +151,18 @@ public class Order extends BaseEntity {
 
     public Long getTotalAmount() {
         return totalAmount;
+    }
+
+    public Long getMemberCouponId() {
+        return memberCouponId;
+    }
+
+    public Long getOriginalAmount() {
+        return originalAmount;
+    }
+
+    public Long getDiscountAmount() {
+        return discountAmount;
     }
 
     public OrderStatus getStatus() {

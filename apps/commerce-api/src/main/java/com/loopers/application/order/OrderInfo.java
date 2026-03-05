@@ -15,6 +15,9 @@ public record OrderInfo(
     String address1,
     String address2,
     Long totalAmount,
+    Long memberCouponId,
+    Long originalAmount,
+    Long discountAmount,
     String status,
     List<OrderItemInfo> items,
     ZonedDateTime createdAt
@@ -29,6 +32,9 @@ public record OrderInfo(
             order.getAddress1(),
             order.getAddress2(),
             order.getTotalAmount(),
+            order.getMemberCouponId(),
+            order.getOriginalAmount(),
+            order.getDiscountAmount(),
             order.getStatus().name(),
             items.stream().map(OrderItemInfo::from).toList(),
             order.getCreatedAt()

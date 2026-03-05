@@ -12,6 +12,7 @@ public class OrderV1Dto {
 
     public record CreateOrderRequest(
         Long addressId,
+        Long memberCouponId,
         List<OrderItemRequest> items
     ) {
         public record OrderItemRequest(Long productId, int quantity) {}
@@ -34,7 +35,9 @@ public class OrderV1Dto {
                 info.id(), info.memberId(),
                 info.recipientName(), info.recipientPhone(),
                 info.zipCode(), info.address1(), info.address2(),
-                info.totalAmount(), info.status(), items, info.createdAt()
+                info.totalAmount(), info.memberCouponId(),
+                info.originalAmount(), info.discountAmount(),
+                info.status(), items, info.createdAt()
             ));
         }
     }
@@ -48,6 +51,9 @@ public class OrderV1Dto {
         String address1,
         String address2,
         Long totalAmount,
+        Long memberCouponId,
+        Long originalAmount,
+        Long discountAmount,
         String status,
         List<OrderItemDto> items,
         ZonedDateTime createdAt
