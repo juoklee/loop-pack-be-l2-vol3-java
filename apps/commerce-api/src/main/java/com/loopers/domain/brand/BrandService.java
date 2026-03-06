@@ -47,12 +47,18 @@ public class BrandService {
 
     @Transactional
     public void increaseLikeCount(Long id) {
-        brandRepository.increaseLikeCount(id);
+        int updatedCount = brandRepository.increaseLikeCount(id);
+        if (updatedCount == 0) {
+            throw new CoreException(ErrorType.NOT_FOUND, "브랜드를 찾을 수 없습니다.");
+        }
     }
 
     @Transactional
     public void decreaseLikeCount(Long id) {
-        brandRepository.decreaseLikeCount(id);
+        int updatedCount = brandRepository.decreaseLikeCount(id);
+        if (updatedCount == 0) {
+            throw new CoreException(ErrorType.NOT_FOUND, "브랜드를 찾을 수 없습니다.");
+        }
     }
 
     @Transactional(readOnly = true)

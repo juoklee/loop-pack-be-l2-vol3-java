@@ -173,6 +173,56 @@ class BrandServiceTest {
         }
     }
 
+    @DisplayName("브랜드 좋아요 수를 증가할 때, ")
+    @Nested
+    class IncreaseLikeCount {
+
+        @DisplayName("존재하는 브랜드의 좋아요를 증가하면, 정상 처리된다.")
+        @Test
+        void succeeds_whenBrandExists() {
+            // Arrange
+            fakeBrandRepository.save(Brand.create("Nike", "Just Do It"));
+
+            // Act & Assert (예외 없이 정상 수행)
+            brandService.increaseLikeCount(1L);
+        }
+
+        @DisplayName("존재하지 않는 브랜드의 좋아요를 증가하면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenBrandNotExists() {
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                brandService.increaseLikeCount(999L);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+    }
+
+    @DisplayName("브랜드 좋아요 수를 감소할 때, ")
+    @Nested
+    class DecreaseLikeCount {
+
+        @DisplayName("존재하는 브랜드의 좋아요를 감소하면, 정상 처리된다.")
+        @Test
+        void succeeds_whenBrandExists() {
+            // Arrange
+            fakeBrandRepository.save(Brand.create("Nike", "Just Do It"));
+
+            // Act & Assert (예외 없이 정상 수행)
+            brandService.decreaseLikeCount(1L);
+        }
+
+        @DisplayName("존재하지 않는 브랜드의 좋아요를 감소하면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenBrandNotExists() {
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                brandService.decreaseLikeCount(999L);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+    }
+
     // Fake 구현체
     static class FakeBrandReader implements BrandReader {
         private final Map<Long, Brand> brands = new HashMap<>();
@@ -226,18 +276,19 @@ class BrandServiceTest {
 
         @Override
         public Brand save(Brand brand) {
-            brands.put(idSequence++, brand);
+            Long id = idSequence++;
+            brands.put(id, brand);
             return brand;
         }
 
         @Override
         public int increaseLikeCount(Long id) {
-            return 1;
+            return brands.containsKey(id) ? 1 : 0;
         }
 
         @Override
         public int decreaseLikeCount(Long id) {
-            return 1;
+            return brands.containsKey(id) ? 1 : 0;
         }
     }
 }
