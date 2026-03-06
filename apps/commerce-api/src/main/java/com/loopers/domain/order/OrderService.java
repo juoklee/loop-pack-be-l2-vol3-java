@@ -102,7 +102,7 @@ public class OrderService {
     }
 
     @Transactional
-    public List<OrderItem> cancelOrder(Long orderId, Long memberId) {
+    public CancelOrderResult cancelOrder(Long orderId, Long memberId) {
         Order order = orderReader.findByIdAndMemberIdForUpdate(orderId, memberId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다."));
 
@@ -112,8 +112,11 @@ public class OrderService {
 
         order.cancel();
 
-        return orderItemReader.findAllByOrderId(orderId);
+        List<OrderItem> items = orderItemReader.findAllByOrderId(orderId);
+        return new CancelOrderResult(order, items);
     }
+
+    public record CancelOrderResult(Order order, List<OrderItem> items) {}
 
     public record OrderItemRequest(Long productId, int quantity) {}
 

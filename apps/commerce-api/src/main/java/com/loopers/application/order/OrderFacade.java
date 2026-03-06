@@ -97,10 +97,10 @@ public class OrderFacade {
         Long memberId = getMemberId(loginId);
 
         // 소유권 검증 + 취소 상태 체크 + 상태 전이 (도메인 규칙)
-        List<OrderItem> items = orderService.cancelOrder(orderId, memberId);
+        OrderService.CancelOrderResult result = orderService.cancelOrder(orderId, memberId);
 
         // 재고 복원 (cross-domain orchestration) — productId 순 정렬로 데드락 방지
-        List<OrderItem> sortedItems = items.stream()
+        List<OrderItem> sortedItems = result.items().stream()
             .sorted(Comparator.comparingLong(OrderItem::getProductId))
             .toList();
 
@@ -110,9 +110,8 @@ public class OrderFacade {
         }
 
         // 쿠폰 복원
-        Order order = orderService.getOrder(orderId);
-        if (order.getMemberCouponId() != null) {
-            couponService.restoreCoupon(order.getMemberCouponId());
+        if (result.order().getMemberCouponId() != null) {
+            couponService.restoreCoupon(result.order().getMemberCouponId());
         }
     }
 

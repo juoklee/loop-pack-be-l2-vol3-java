@@ -216,12 +216,12 @@ class OrderServiceTest {
             fakeOrderItemReader.addItem(item);
 
             // Act
-            List<OrderItem> items = orderService.cancelOrder(order.getId(), 1L);
+            OrderService.CancelOrderResult result = orderService.cancelOrder(order.getId(), 1L);
 
             // Assert
             assertAll(
-                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED),
-                () -> assertThat(items).hasSize(1)
+                () -> assertThat(result.order().getStatus()).isEqualTo(OrderStatus.CANCELLED),
+                () -> assertThat(result.items()).hasSize(1)
             );
         }
 
