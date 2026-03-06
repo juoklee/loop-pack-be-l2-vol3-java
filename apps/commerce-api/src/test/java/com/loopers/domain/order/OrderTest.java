@@ -97,6 +97,36 @@ class OrderTest {
             );
         }
 
+        @DisplayName("쿠폰 적용 시 originalAmount가 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenCouponAppliedButOriginalAmountIsNull() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null,
+                             95000L, 10L, null, 5000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("쿠폰 적용 시 discountAmount가 null이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenCouponAppliedButDiscountAmountIsNull() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null,
+                             95000L, 10L, 100000L, null)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
+        @DisplayName("쿠폰 적용 시 totalAmount가 originalAmount - discountAmount와 일치하지 않으면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenTotalAmountMismatchWithDiscount() {
+            CoreException exception = assertThrows(CoreException.class, () ->
+                Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null,
+                             90000L, 10L, 100000L, 5000L)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+
         @DisplayName("쿠폰 미적용 주문이면, 쿠폰 관련 필드가 null이다.")
         @Test
         void createsOrder_withoutCouponFields() {

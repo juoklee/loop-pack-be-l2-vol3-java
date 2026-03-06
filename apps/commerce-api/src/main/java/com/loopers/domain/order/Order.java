@@ -80,6 +80,13 @@ public class Order extends BaseEntity {
         validateNotBlank(zipCode, "우편번호는 필수입니다.");
         validateNotBlank(address1, "기본주소는 필수입니다.");
         validatePositive(totalAmount, "주문 총액은 0보다 커야 합니다.");
+        if (memberCouponId != null) {
+            validateNotNull(originalAmount, "쿠폰 적용 시 원래 금액은 필수입니다.");
+            validateNotNull(discountAmount, "쿠폰 적용 시 할인 금액은 필수입니다.");
+            if (totalAmount != originalAmount - discountAmount) {
+                throw new CoreException(ErrorType.BAD_REQUEST, "주문 총액이 원래 금액에서 할인 금액을 뺀 값과 일치하지 않습니다.");
+            }
+        }
         return new Order(memberId, recipientName, recipientPhone, zipCode, address1, address2,
                          totalAmount, memberCouponId, originalAmount, discountAmount);
     }
