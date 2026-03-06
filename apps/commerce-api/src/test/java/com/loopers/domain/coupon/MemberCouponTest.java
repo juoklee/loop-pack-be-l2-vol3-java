@@ -127,6 +127,17 @@ class MemberCouponTest {
             CoreException exception = assertThrows(CoreException.class, memberCoupon::use);
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
+
+        @DisplayName("만료일이 지난 쿠폰이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenExpiredByTime() {
+            // Arrange
+            MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L, PAST);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, memberCoupon::use);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
     }
 
     @DisplayName("쿠폰을 만료시킬 때, ")
@@ -247,6 +258,13 @@ class MemberCouponTest {
         void returnsFalse_whenExpired() {
             MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L, FUTURE);
             memberCoupon.expire();
+            assertThat(memberCoupon.isUsable()).isFalse();
+        }
+
+        @DisplayName("AVAILABLE 상태이지만 만료일이 지났으면, false를 반환한다.")
+        @Test
+        void returnsFalse_whenAvailableButExpiredByTime() {
+            MemberCoupon memberCoupon = MemberCoupon.create(1L, 100L, PAST);
             assertThat(memberCoupon.isUsable()).isFalse();
         }
     }

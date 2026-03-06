@@ -55,6 +55,9 @@ public class MemberCoupon extends BaseEntity {
     }
 
     public void use() {
+        if (isExpired()) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "만료된 쿠폰은 사용할 수 없습니다.");
+        }
         if (this.status != CouponStatus.AVAILABLE) {
             throw new CoreException(ErrorType.BAD_REQUEST, "사용 가능한 상태의 쿠폰만 사용할 수 있습니다.");
         }
@@ -78,7 +81,7 @@ public class MemberCoupon extends BaseEntity {
     }
 
     public boolean isUsable() {
-        return this.status == CouponStatus.AVAILABLE;
+        return this.status == CouponStatus.AVAILABLE && !isExpired();
     }
 
     public boolean isExpired() {
