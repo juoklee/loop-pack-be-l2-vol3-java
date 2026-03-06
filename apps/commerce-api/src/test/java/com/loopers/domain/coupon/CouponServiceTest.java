@@ -474,6 +474,14 @@ class CouponServiceTest {
         }
 
         @Override
+        public List<Coupon> findAllByIdIn(List<Long> ids) {
+            return ids.stream()
+                .map(coupons::get)
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        }
+
+        @Override
         public PageResult<Coupon> findAll(int page, int size) {
             List<Coupon> all = new ArrayList<>(coupons.values());
             return new PageResult<>(all, all.size(), 1, page, size);

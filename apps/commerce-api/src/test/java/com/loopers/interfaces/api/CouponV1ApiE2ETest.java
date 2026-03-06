@@ -215,6 +215,32 @@ class CouponV1ApiE2ETest {
             );
         }
 
+        @DisplayName("여러 종류의 쿠폰을 발급받아도 한 번의 조회로 모두 반환된다.")
+        @Test
+        void returnsMyCoupons_whenManyCouponsIssued() {
+            // Arrange — 5개 쿠폰 생성 후 모두 발급
+            registerMember("user1", "Test1234!");
+            for (int i = 1; i <= 5; i++) {
+                Long couponId = createCoupon("쿠폰" + i, "FIXED", 1000L * i, FUTURE);
+                issueCoupon("user1", "Test1234!", couponId);
+            }
+
+            // Act
+            ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponListResponse>> response = testRestTemplate.exchange(
+                "/api/v1/users/me/coupons", HttpMethod.GET,
+                new HttpEntity<>(authHeaders("user1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertAll(
+                () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
+                () -> assertThat(response.getBody().data().memberCoupons()).hasSize(5),
+                () -> assertThat(response.getBody().data().memberCoupons())
+                    .allSatisfy(mc -> assertThat(mc.coupon().name()).startsWith("쿠폰"))
+            );
+        }
+
         @DisplayName("다른 사용자의 쿠폰은 조회되지 않는다.")
         @Test
         void returnsOnlyMyCoupons_notOtherUsers() {

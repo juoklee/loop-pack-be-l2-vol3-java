@@ -9,6 +9,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -25,6 +26,11 @@ public class CouponReaderImpl implements CouponReader {
     @Override
     public Optional<Coupon> findByIdForUpdate(Long id) {
         return couponJpaRepository.findByIdForUpdate(id);
+    }
+
+    @Override
+    public List<Coupon> findAllByIdIn(List<Long> ids) {
+        return couponJpaRepository.findAllByIdInAndDeletedAtIsNull(ids);
     }
 
     @Override

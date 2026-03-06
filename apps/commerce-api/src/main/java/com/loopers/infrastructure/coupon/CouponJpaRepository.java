@@ -9,10 +9,12 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 public interface CouponJpaRepository extends JpaRepository<Coupon, Long> {
     Optional<Coupon> findByIdAndDeletedAtIsNull(Long id);
+    List<Coupon> findAllByIdInAndDeletedAtIsNull(List<Long> ids);
     Page<Coupon> findAllByDeletedAtIsNull(Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

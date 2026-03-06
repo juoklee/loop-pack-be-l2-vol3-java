@@ -83,8 +83,7 @@ public class CouponFacade {
         PageResult<MemberCoupon> result = couponService.getMemberCoupons(memberId, page, size);
 
         List<Long> couponIds = result.content().stream().map(MemberCoupon::getCouponId).distinct().toList();
-        Map<Long, Coupon> couponMap = couponIds.stream()
-            .map(couponService::getCoupon)
+        Map<Long, Coupon> couponMap = couponService.getCoupons(couponIds).stream()
             .collect(Collectors.toMap(Coupon::getId, Function.identity()));
 
         List<MemberCouponInfo> infos = result.content().stream()

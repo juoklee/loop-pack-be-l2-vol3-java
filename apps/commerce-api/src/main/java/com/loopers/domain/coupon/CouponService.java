@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @RequiredArgsConstructor
 @Component
@@ -39,6 +40,11 @@ public class CouponService {
     public Coupon getCoupon(Long couponId) {
         return couponReader.findById(couponId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "쿠폰을 찾을 수 없습니다."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<Coupon> getCoupons(List<Long> couponIds) {
+        return couponReader.findAllByIdIn(couponIds);
     }
 
     @Transactional(readOnly = true)
