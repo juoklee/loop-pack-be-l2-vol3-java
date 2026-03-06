@@ -48,7 +48,7 @@ public class ProductService {
 
     @Transactional
     public void updateStock(Long id, int quantity) {
-        Product product = getProduct(id);
+        Product product = getProductForUpdate(id);
         product.updateStock(quantity);
     }
 

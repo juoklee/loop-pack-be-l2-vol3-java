@@ -985,6 +985,77 @@ class ConcurrencyE2ETest {
         }
     }
 
+    @DisplayName("재고 수정 + 주문 동시성 테스트")
+    @Nested
+    class StockUpdateAndOrderConcurrency {
+
+        @DisplayName("관리자가 재고를 수정하는 동안 고객이 주문하면, 둘 다 정확히 반영된다.")
+        @Test
+        void concurrentStockUpdateAndOrder_bothAppliedCorrectly() throws InterruptedException {
+            // Arrange
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 100, 5);
+
+            registerMember("stockUpdateUser", "Test1234!");
+            Long addressId = registerAddress("stockUpdateUser", "Test1234!");
+
+            int threadCount = 2;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger orderSuccess = new AtomicInteger(0);
+            AtomicInteger stockUpdateSuccess = new AtomicInteger(0);
+
+            // Act — 관리자 재고 수정(50)과 고객 주문(1개)을 동시에 실행
+            executor.submit(() -> {
+                try {
+                    var request = new ProductV1Dto.UpdateStockRequest(50);
+                    ResponseEntity<ApiResponse<Void>> response = testRestTemplate.exchange(
+                        "/api-admin/v1/products/" + productId + "/stock", HttpMethod.PATCH,
+                        adminEntity(request),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        stockUpdateSuccess.incrementAndGet();
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+
+            executor.submit(() -> {
+                try {
+                    var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+                    var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders", HttpMethod.POST,
+                        new HttpEntity<>(request, authHeaders("stockUpdateUser", "Test1234!")),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        orderSuccess.incrementAndGet();
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+
+            latch.await();
+            executor.shutdown();
+
+            // Assert — 둘 다 성공하고, 최종 재고가 49 또는 50 (실행 순서에 따라 다름)
+            // 재고 수정이 먼저 → 50으로 세팅 → 주문으로 49
+            // 주문이 먼저 → 100에서 99 → 재고 수정으로 50
+            assertThat(orderSuccess.get() + stockUpdateSuccess.get()).isEqualTo(2);
+
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            int finalStock = productResponse.getBody().data().product().stockQuantity();
+            assertThat(finalStock).isIn(49, 50);
+        }
+    }
+
     // --- Helper Methods ---
 
     private void registerMember(String loginId, String password) {
