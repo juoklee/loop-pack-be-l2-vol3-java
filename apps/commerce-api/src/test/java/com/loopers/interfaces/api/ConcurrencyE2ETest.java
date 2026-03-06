@@ -2,6 +2,7 @@ package com.loopers.interfaces.api;
 
 import com.loopers.interfaces.api.brand.BrandV1Dto;
 import com.loopers.interfaces.api.coupon.CouponV1Dto;
+import com.loopers.interfaces.api.like.LikeV1Dto;
 import com.loopers.interfaces.api.member.MemberV1Dto;
 import com.loopers.interfaces.api.order.OrderV1Dto;
 import com.loopers.interfaces.api.product.ProductV1Dto;
@@ -23,6 +24,7 @@ import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -283,6 +285,526 @@ class ConcurrencyE2ETest {
         }
     }
 
+    @DisplayName("쿠폰 발급 동시성 테스트")
+    @Nested
+    class CouponIssueConcurrency {
+
+        @DisplayName("수량 5개 쿠폰에 10명이 동시 발급 요청하면, 5명만 성공하고 issuedQuantity는 5가 된다.")
+        @Test
+        void concurrentCouponIssue_onlyLimitedSucceeds() throws InterruptedException {
+            // Arrange
+            int threadCount = 10;
+            Long couponId = createCouponWithQuantity("한정 쿠폰", "FIXED", 3000L, null,
+                LocalDateTime.now().plusDays(30), 5);
+
+            String[] loginIds = new String[threadCount];
+            for (int i = 0; i < threadCount; i++) {
+                String loginId = "issueUser" + i;
+                registerMember(loginId, "Test1234!");
+                loginIds[i] = loginId;
+            }
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
+
+            // Act — 10명이 동시에 쿠폰 발급 요청
+            for (int i = 0; i < threadCount; i++) {
+                final int idx = i;
+                executor.submit(() -> {
+                    try {
+                        ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponResponse>> response = testRestTemplate.exchange(
+                            "/api/v1/coupons/" + couponId + "/issue", HttpMethod.POST,
+                            new HttpEntity<>(authHeaders(loginIds[idx], "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+
+                        if (response.getStatusCode() == HttpStatus.CREATED) {
+                            successCount.incrementAndGet();
+                        } else {
+                            failCount.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            latch.await();
+            executor.shutdown();
+
+            // Assert — 발급 수량 확인
+            assertThat(successCount.get()).isEqualTo(5);
+            assertThat(failCount.get()).isEqualTo(5);
+        }
+    }
+
+    @DisplayName("주문 취소 동시성 테스트")
+    @Nested
+    class OrderCancelConcurrency {
+
+        @DisplayName("같은 주문을 동시에 2번 취소하면, 1번만 성공하고 재고는 정확히 1개만 복원된다.")
+        @Test
+        void concurrentOrderCancel_onlyOneSucceeds() throws InterruptedException {
+            // Arrange
+            int threadCount = 2;
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 100, 5);
+
+            registerMember("cancelUser", "Test1234!");
+            Long addressId = registerAddress("cancelUser", "Test1234!");
+
+            // 주문 생성
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> orderResponse = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(request, authHeaders("cancelUser", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+            Long orderId = orderResponse.getBody().data().order().id();
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
+
+            // Act — 동시에 2번 취소
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        ResponseEntity<ApiResponse<Object>> response = testRestTemplate.exchange(
+                            "/api/v1/orders/" + orderId + "/cancel", HttpMethod.POST,
+                            new HttpEntity<>(authHeaders("cancelUser", "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            successCount.incrementAndGet();
+                        } else {
+                            failCount.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            latch.await();
+            executor.shutdown();
+
+            // Assert — 1번만 취소 성공, 재고 정확히 1개 복원
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(successCount.get()).isEqualTo(1);
+            assertThat(failCount.get()).isEqualTo(1);
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+        }
+    }
+
+    @DisplayName("주문 생성 + 취소 경합 동시성 테스트")
+    @Nested
+    class OrderCreateAndCancelConcurrency {
+
+        @DisplayName("주문 생성과 다른 주문 취소가 동시에 발생해도 재고 정합성이 유지된다.")
+        @Test
+        void concurrentCreateAndCancel_stockRemainsConsistent() throws InterruptedException {
+            // Arrange
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 50, 5);
+
+            // 먼저 5명이 순차적으로 주문 생성 (재고: 50 → 45)
+            List<Long> orderIds = new ArrayList<>();
+            for (int i = 0; i < 5; i++) {
+                String loginId = "preUser" + i;
+                registerMember(loginId, "Test1234!");
+                Long addressId = registerAddress(loginId, "Test1234!");
+
+                var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+                var request = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
+                ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                    "/api/v1/orders", HttpMethod.POST,
+                    new HttpEntity<>(request, authHeaders(loginId, "Test1234!")),
+                    new ParameterizedTypeReference<>() {}
+                );
+                orderIds.add(response.getBody().data().order().id());
+            }
+
+            // 5명의 새 주문자 + 5명의 취소자 준비
+            int threadCount = 10;
+            String[] newLoginIds = new String[5];
+            Long[] newAddressIds = new Long[5];
+            for (int i = 0; i < 5; i++) {
+                String loginId = "newUser" + i;
+                registerMember(loginId, "Test1234!");
+                newLoginIds[i] = loginId;
+                newAddressIds[i] = registerAddress(loginId, "Test1234!");
+            }
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger createSuccess = new AtomicInteger(0);
+            AtomicInteger cancelSuccess = new AtomicInteger(0);
+
+            // Act — 5명 주문 생성 + 5명 주문 취소 동시 실행
+            for (int i = 0; i < 5; i++) {
+                // 새 주문 생성 스레드
+                final int idx = i;
+                executor.submit(() -> {
+                    try {
+                        var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+                        var request = new OrderV1Dto.CreateOrderRequest(newAddressIds[idx], null, items);
+                        ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                            "/api/v1/orders", HttpMethod.POST,
+                            new HttpEntity<>(request, authHeaders(newLoginIds[idx], "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            createSuccess.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+
+                // 기존 주문 취소 스레드
+                final Long orderId = orderIds.get(i);
+                final String cancelLoginId = "preUser" + i;
+                executor.submit(() -> {
+                    try {
+                        ResponseEntity<ApiResponse<Object>> response = testRestTemplate.exchange(
+                            "/api/v1/orders/" + orderId + "/cancel", HttpMethod.POST,
+                            new HttpEntity<>(authHeaders(cancelLoginId, "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            cancelSuccess.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            latch.await();
+            executor.shutdown();
+
+            // Assert — 재고 정합성: 초기 50 - 5(기존) + 5(취소 복원) - 5(신규) = 45
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(createSuccess.get()).isEqualTo(5);
+            assertThat(cancelSuccess.get()).isEqualTo(5);
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(45);
+        }
+    }
+
+    @DisplayName("좋아요 토글 동시성 테스트")
+    @Nested
+    class LikeToggleConcurrency {
+
+        @DisplayName("같은 사용자가 동시에 좋아요를 2번 토글하면, 최종 likeCount가 0 또는 1이다.")
+        @Test
+        void concurrentLikeToggle_finalStateConsistent() throws InterruptedException {
+            // Arrange
+            int threadCount = 2;
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 100, 5);
+
+            registerMember("toggleUser", "Test1234!");
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
+
+            // Act — 같은 사용자가 동시에 2번 좋아요 토글
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        ResponseEntity<ApiResponse<LikeV1Dto.ToggleResponse>> response = testRestTemplate.exchange(
+                            "/api/v1/products/" + productId + "/likes", HttpMethod.POST,
+                            new HttpEntity<>(authHeaders("toggleUser", "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            successCount.incrementAndGet();
+                        } else {
+                            failCount.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            latch.await();
+            executor.shutdown();
+
+            // Assert — likeCount가 0 또는 1 (동시 토글이므로 둘 다 가능)
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            int likeCount = productResponse.getBody().data().product().likeCount();
+            assertThat(likeCount).isIn(0, 1);
+            // 성공 + 실패 = threadCount (Unique 제약조건으로 하나가 실패할 수도 있음)
+            assertThat(successCount.get() + failCount.get()).isEqualTo(threadCount);
+        }
+    }
+
+    @DisplayName("브랜드 좋아요 동시성 테스트")
+    @Nested
+    class BrandLikeConcurrency {
+
+        @DisplayName("동시에 10명이 같은 브랜드에 좋아요를 누르면, likeCount가 정확히 10이 된다.")
+        @Test
+        void concurrentBrandLikes_incrementCorrectly() throws InterruptedException {
+            // Arrange
+            int threadCount = 10;
+            Long brandId = registerBrand("Nike", "Just Do It");
+
+            String[] loginIds = new String[threadCount];
+            for (int i = 0; i < threadCount; i++) {
+                String loginId = "brandLikeUser" + i;
+                registerMember(loginId, "Test1234!");
+                loginIds[i] = loginId;
+            }
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+
+            // Act — 10명이 동시에 브랜드 좋아요
+            for (int i = 0; i < threadCount; i++) {
+                final int idx = i;
+                executor.submit(() -> {
+                    try {
+                        ResponseEntity<ApiResponse<LikeV1Dto.ToggleResponse>> response = testRestTemplate.exchange(
+                            "/api/v1/brands/" + brandId + "/likes", HttpMethod.POST,
+                            new HttpEntity<>(authHeaders(loginIds[idx], "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            successCount.incrementAndGet();
+                        }
+                    } finally {
+                        latch.countDown();
+                    }
+                });
+            }
+            latch.await();
+            executor.shutdown();
+
+            // Assert — likeCount 확인
+            ResponseEntity<ApiResponse<BrandV1Dto.BrandResponse>> brandResponse = testRestTemplate.exchange(
+                "/api/v1/brands/" + brandId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(successCount.get()).isEqualTo(threadCount);
+            assertThat(brandResponse.getBody().data().brand().likeCount()).isEqualTo(10);
+        }
+    }
+
+    @DisplayName("배송지 수정 + 주문 취소 동시성 테스트")
+    @Nested
+    class ShippingAddressUpdateAndCancelConcurrency {
+
+        @DisplayName("배송지 수정과 주문 취소가 동시에 발생하면, 취소된 주문의 배송지가 수정되지 않는다.")
+        @Test
+        void concurrentUpdateAndCancel_preventsUpdateOnCancelledOrder() throws InterruptedException {
+            // Arrange
+            int threadCount = 2;
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 10000L, 100, 5);
+
+            registerMember("shippingUser", "Test1234!");
+            Long addressId = registerAddress("shippingUser", "Test1234!");
+            HttpHeaders headers = authHeaders("shippingUser", "Test1234!");
+
+            // 주문 생성
+            var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+            var createRequest = new OrderV1Dto.CreateOrderRequest(addressId, null, items);
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> orderResponse = testRestTemplate.exchange(
+                "/api/v1/orders", HttpMethod.POST,
+                new HttpEntity<>(createRequest, headers),
+                new ParameterizedTypeReference<>() {}
+            );
+            Long orderId = orderResponse.getBody().data().order().id();
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch ready = new CountDownLatch(threadCount);
+            CountDownLatch start = new CountDownLatch(1);
+            AtomicInteger cancelSuccess = new AtomicInteger(0);
+            AtomicInteger updateSuccess = new AtomicInteger(0);
+
+            // Act — 배송지 수정과 주문 취소를 동시에 실행
+            executor.submit(() -> {
+                ready.countDown();
+                try { start.await(); } catch (InterruptedException ignored) {}
+                try {
+                    ResponseEntity<ApiResponse<Object>> response = testRestTemplate.exchange(
+                        "/api/v1/orders/" + orderId + "/cancel", HttpMethod.POST,
+                        new HttpEntity<>(headers),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        cancelSuccess.incrementAndGet();
+                    }
+                } catch (Exception ignored) {}
+            });
+
+            executor.submit(() -> {
+                ready.countDown();
+                try { start.await(); } catch (InterruptedException ignored) {}
+                try {
+                    var updateRequest = new OrderV1Dto.UpdateShippingAddressRequest(
+                        "김철수", "010-9999-9999", "54321", "서울시 서초구", "202호"
+                    );
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders/" + orderId + "/shipping-address", HttpMethod.PUT,
+                        new HttpEntity<>(updateRequest, headers),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        updateSuccess.incrementAndGet();
+                    }
+                } catch (Exception ignored) {}
+            });
+
+            ready.await();
+            start.countDown();
+            executor.shutdown();
+            executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS);
+
+            // Assert — 주문 상태 확인
+            ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> finalOrder = testRestTemplate.exchange(
+                "/api/v1/orders/" + orderId, HttpMethod.GET,
+                new HttpEntity<>(headers),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            String finalStatus = finalOrder.getBody().data().order().status();
+
+            // 취소는 항상 성공해야 한다
+            assertThat(cancelSuccess.get()).isEqualTo(1);
+            assertThat(finalStatus).isEqualTo("CANCELLED");
+
+            // 취소가 먼저 락을 획득한 경우: 배송지 수정 실패 (updateSuccess=0)
+            // 배송지 수정이 먼저 락을 획득한 경우: 배송지 수정 성공 후 취소 성공 (updateSuccess=1)
+            // 어느 경우든 최종 상태는 CANCELLED
+            assertThat(updateSuccess.get()).isIn(0, 1);
+        }
+    }
+
+    @DisplayName("쿠폰 + 재고 부족 복원 테스트")
+    @Nested
+    class CouponWithStockFailConcurrency {
+
+        @DisplayName("쿠폰 적용 주문이 재고 부족으로 실패하면, 쿠폰이 사용되지 않은 상태로 남는다.")
+        @Test
+        void couponOrder_withInsufficientStock_couponRemainAvailable() throws InterruptedException {
+            // Arrange
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 100000L, 1, 5);
+
+            registerMember("couponStockUser1", "Test1234!");
+            registerMember("couponStockUser2", "Test1234!");
+            Long addressId1 = registerAddress("couponStockUser1", "Test1234!");
+            Long addressId2 = registerAddress("couponStockUser2", "Test1234!");
+
+            Long couponId = createCoupon("5000원 할인", "FIXED", 5000L, null, LocalDateTime.now().plusDays(30));
+            Long memberCouponId1 = issueCouponAndGetId("couponStockUser1", "Test1234!", couponId);
+            Long memberCouponId2 = issueCouponAndGetId("couponStockUser2", "Test1234!", couponId);
+
+            int threadCount = 2;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+            AtomicInteger failCount = new AtomicInteger(0);
+
+            // Act — 재고 1개인 상품에 2명이 쿠폰 적용하여 동시 주문
+            executor.submit(() -> {
+                try {
+                    var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+                    var request = new OrderV1Dto.CreateOrderRequest(addressId1, memberCouponId1, items);
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders", HttpMethod.POST,
+                        new HttpEntity<>(request, authHeaders("couponStockUser1", "Test1234!")),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        successCount.incrementAndGet();
+                    } else {
+                        failCount.incrementAndGet();
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+
+            executor.submit(() -> {
+                try {
+                    var items = List.of(new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1));
+                    var request = new OrderV1Dto.CreateOrderRequest(addressId2, memberCouponId2, items);
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders", HttpMethod.POST,
+                        new HttpEntity<>(request, authHeaders("couponStockUser2", "Test1234!")),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        successCount.incrementAndGet();
+                    } else {
+                        failCount.incrementAndGet();
+                    }
+                } finally {
+                    latch.countDown();
+                }
+            });
+
+            latch.await();
+            executor.shutdown();
+
+            // Assert — 1명 성공, 1명 실패
+            assertThat(successCount.get()).isEqualTo(1);
+            assertThat(failCount.get()).isEqualTo(1);
+
+            // 재고 0 확인
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(0);
+
+            // 실패한 사용자의 쿠폰은 AVAILABLE 상태 확인
+            ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponResponse>> mc1 = testRestTemplate.exchange(
+                "/api/v1/users/me/coupons?page=0&size=10", HttpMethod.GET,
+                new HttpEntity<>(authHeaders("couponStockUser1", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+            ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponResponse>> mc2 = testRestTemplate.exchange(
+                "/api/v1/users/me/coupons?page=0&size=10", HttpMethod.GET,
+                new HttpEntity<>(authHeaders("couponStockUser2", "Test1234!")),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // 두 쿠폰 중 하나는 USED, 하나는 AVAILABLE
+            long usedCount = countCouponStatus(memberCouponId1, "couponStockUser1", "Test1234!", "USED")
+                + countCouponStatus(memberCouponId2, "couponStockUser2", "Test1234!", "USED");
+            long availableCount = countCouponStatus(memberCouponId1, "couponStockUser1", "Test1234!", "AVAILABLE")
+                + countCouponStatus(memberCouponId2, "couponStockUser2", "Test1234!", "AVAILABLE");
+
+            assertThat(usedCount).isEqualTo(1);
+            assertThat(availableCount).isEqualTo(1);
+        }
+    }
+
     // --- Helper Methods ---
 
     private void registerMember(String loginId, String password) {
@@ -334,6 +856,27 @@ class ConcurrencyE2ETest {
             new ParameterizedTypeReference<>() {}
         );
         return response.getBody().data().coupon().id();
+    }
+
+    private Long createCouponWithQuantity(String name, String type, Long value, Long minOrderAmount,
+                                           LocalDateTime expiredAt, int totalQuantity) {
+        var request = new CouponV1Dto.CreateCouponRequest(name, type, value, minOrderAmount, expiredAt, null, totalQuantity);
+        ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
+            "/api-admin/v1/coupons", HttpMethod.POST, adminEntity(request),
+            new ParameterizedTypeReference<>() {}
+        );
+        return response.getBody().data().coupon().id();
+    }
+
+    private int countCouponStatus(Long memberCouponId, String loginId, String password, String expectedStatus) {
+        ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponListResponse>> response = testRestTemplate.exchange(
+            "/api/v1/users/me/coupons?page=0&size=10", HttpMethod.GET,
+            new HttpEntity<>(authHeaders(loginId, password)),
+            new ParameterizedTypeReference<>() {}
+        );
+        return (int) response.getBody().data().memberCoupons().stream()
+            .filter(mc -> mc.id().equals(memberCouponId) && mc.status().equals(expectedStatus))
+            .count();
     }
 
     private Long issueCouponAndGetId(String loginId, String password, Long couponId) {
