@@ -20,10 +20,10 @@ public interface BrandJpaRepository extends JpaRepository<Brand, Long> {
     Page<Brand> findByNameContainingAndDeletedAtIsNull(String keyword, Pageable pageable);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Brand b SET b.likeCount = b.likeCount + 1 WHERE b.id = :id")
+    @Query("UPDATE Brand b SET b.likeCount = b.likeCount + 1 WHERE b.id = :id AND b.deletedAt IS NULL")
     int increaseLikeCount(@Param("id") Long id);
 
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE Brand b SET b.likeCount = b.likeCount - 1 WHERE b.id = :id AND b.likeCount > 0")
+    @Query("UPDATE Brand b SET b.likeCount = b.likeCount - 1 WHERE b.id = :id AND b.deletedAt IS NULL AND b.likeCount > 0")
     int decreaseLikeCount(@Param("id") Long id);
 }
