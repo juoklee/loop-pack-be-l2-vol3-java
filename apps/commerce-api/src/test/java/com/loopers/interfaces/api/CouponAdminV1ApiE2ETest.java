@@ -144,6 +144,19 @@ class CouponAdminV1ApiE2ETest {
             );
         }
 
+        @DisplayName("존재하지 않는 쿠폰 타입이면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenInvalidType() {
+            var request = new CouponV1Dto.CreateCouponRequest("쿠폰", "INVALID_TYPE", 5000L, null, FUTURE, null, null);
+
+            ResponseEntity<ApiResponse<CouponV1Dto.CouponResponse>> response = testRestTemplate.exchange(
+                COUPON_ADMIN, HttpMethod.POST, adminEntity(request),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
+
         @DisplayName("정률 쿠폰의 할인율이 100을 초과하면, 400 Bad Request 응답을 받는다.")
         @Test
         void returnsBadRequest_whenRateExceeds100() {

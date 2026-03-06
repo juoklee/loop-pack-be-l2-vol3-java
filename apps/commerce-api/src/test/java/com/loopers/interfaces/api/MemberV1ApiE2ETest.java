@@ -142,6 +142,32 @@ class MemberV1ApiE2ETest {
             // assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
         }
+
+        @DisplayName("존재하지 않는 성별이면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenInvalidGender() {
+            // arrange
+            MemberV1Dto.RegisterRequest request = new MemberV1Dto.RegisterRequest(
+                "testUser3",
+                "Test1234!",
+                "홍길동",
+                LocalDate.of(1990, 1, 15),
+                "INVALID_GENDER",
+                "test@example.com",
+                null
+            );
+
+            // act
+            ResponseEntity<ApiResponse<MemberV1Dto.MemberResponse>> response = testRestTemplate.exchange(
+                ENDPOINT_REGISTER,
+                HttpMethod.POST,
+                new HttpEntity<>(request),
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @DisplayName("GET /api/v1/members/me (내 정보 조회)")

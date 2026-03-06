@@ -8,6 +8,8 @@ import com.loopers.domain.brand.BrandService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
 import com.loopers.domain.product.ProductSortType;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -36,7 +38,12 @@ public class ProductFacade {
     }
 
     public PagedInfo<ProductInfo> getProducts(String keyword, Long brandId, String sort, int page, int size) {
-        ProductSortType sortType = ProductSortType.valueOf(sort);
+        ProductSortType sortType;
+        try {
+            sortType = ProductSortType.valueOf(sort);
+        } catch (IllegalArgumentException e) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 정렬 타입입니다: " + sort);
+        }
         PageResult<Product> result = productService.getProducts(keyword, brandId, sortType, page, size);
         List<Long> brandIds = result.content().stream()
             .map(Product::getBrandId).distinct().toList();

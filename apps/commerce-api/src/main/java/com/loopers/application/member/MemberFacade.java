@@ -5,6 +5,8 @@ import com.loopers.domain.PageResult;
 import com.loopers.domain.member.Gender;
 import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -22,7 +24,12 @@ public class MemberFacade {
 
     public MemberInfo register(String loginId, String rawPassword, String name,
                                LocalDate birthDate, String gender, String email, String phone) {
-        Gender genderEnum = Gender.valueOf(gender);
+        Gender genderEnum;
+        try {
+            genderEnum = Gender.valueOf(gender);
+        } catch (IllegalArgumentException e) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 성별입니다: " + gender);
+        }
         Member member = memberService.register(loginId, rawPassword, name, birthDate, genderEnum, email, phone);
         return MemberInfo.from(member);
     }

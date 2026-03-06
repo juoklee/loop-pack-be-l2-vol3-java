@@ -278,6 +278,21 @@ class ProductV1ApiE2ETest {
                 () -> assertThat(response.getBody().data().products().get(2).price()).isEqualTo(159000L)
             );
         }
+
+        @DisplayName("존재하지 않는 정렬 타입이면, 400 Bad Request 응답을 받는다.")
+        @Test
+        void returnsBadRequest_whenInvalidSortType() {
+            // Act
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductListResponse>> response = testRestTemplate.exchange(
+                PRODUCT_PUBLIC + "?sort=INVALID_SORT",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            // Assert
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @DisplayName("GET /api/v1/products/{productId} (상품 상세 조회)")

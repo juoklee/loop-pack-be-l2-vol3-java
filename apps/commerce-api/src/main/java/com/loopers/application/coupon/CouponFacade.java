@@ -8,6 +8,8 @@ import com.loopers.domain.coupon.CouponType;
 import com.loopers.domain.coupon.MemberCoupon;
 import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
+import com.loopers.support.error.CoreException;
+import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +30,13 @@ public class CouponFacade {
 
     public CouponInfo createCoupon(String name, String type, Long value, Long minOrderAmount,
                                     LocalDateTime expiredAt, Integer validDays, Integer totalQuantity) {
-        Coupon coupon = couponService.createCoupon(name, CouponType.valueOf(type), value, minOrderAmount, expiredAt, validDays, totalQuantity);
+        CouponType couponType;
+        try {
+            couponType = CouponType.valueOf(type);
+        } catch (IllegalArgumentException e) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "유효하지 않은 쿠폰 타입입니다: " + type);
+        }
+        Coupon coupon = couponService.createCoupon(name, couponType, value, minOrderAmount, expiredAt, validDays, totalQuantity);
         return CouponInfo.of(coupon);
     }
 
