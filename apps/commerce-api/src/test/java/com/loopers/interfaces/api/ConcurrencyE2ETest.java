@@ -175,6 +175,186 @@ class ConcurrencyE2ETest {
         }
     }
 
+    @DisplayName("다중 상품 주문 데드락 방지 테스트")
+    @Nested
+    class MultiProductDeadlockPrevention {
+
+        @DisplayName("두 스레드가 서로 다른 순서로 2개 상품을 주문해도 데드락 없이 완료되고 재고가 정확하다.")
+        @Test
+        void concurrentOrders_multipleProducts_deadlockPrevention() throws InterruptedException {
+            // Arrange
+            int threadCount = 2;
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long p1 = registerProduct(brandId, "상품A", 10000L, 10, 5);
+            Long p2 = registerProduct(brandId, "상품B", 20000L, 10, 5);
+
+            String[] loginIds = new String[threadCount];
+            Long[] addressIds = new Long[threadCount];
+            for (int i = 0; i < threadCount; i++) {
+                String loginId = "deadlockUser" + i;
+                registerMember(loginId, "Test1234!");
+                loginIds[i] = loginId;
+                addressIds[i] = registerAddress(loginId, "Test1234!");
+            }
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch ready = new CountDownLatch(threadCount);
+            CountDownLatch start = new CountDownLatch(1);
+            CountDownLatch done = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+
+            // Act — 스레드1: [p1, p2] 순서, 스레드2: [p2, p1] 순서로 주문
+            executor.submit(() -> {
+                ready.countDown();
+                try { start.await(); } catch (InterruptedException ignored) {}
+                try {
+                    var items = List.of(
+                        new OrderV1Dto.CreateOrderRequest.OrderItemRequest(p1, 1),
+                        new OrderV1Dto.CreateOrderRequest.OrderItemRequest(p2, 1)
+                    );
+                    var request = new OrderV1Dto.CreateOrderRequest(addressIds[0], null, items);
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders", HttpMethod.POST,
+                        new HttpEntity<>(request, authHeaders(loginIds[0], "Test1234!")),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        successCount.incrementAndGet();
+                    }
+                } finally {
+                    done.countDown();
+                }
+            });
+
+            executor.submit(() -> {
+                ready.countDown();
+                try { start.await(); } catch (InterruptedException ignored) {}
+                try {
+                    var items = List.of(
+                        new OrderV1Dto.CreateOrderRequest.OrderItemRequest(p2, 1),
+                        new OrderV1Dto.CreateOrderRequest.OrderItemRequest(p1, 1)
+                    );
+                    var request = new OrderV1Dto.CreateOrderRequest(addressIds[1], null, items);
+                    ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                        "/api/v1/orders", HttpMethod.POST,
+                        new HttpEntity<>(request, authHeaders(loginIds[1], "Test1234!")),
+                        new ParameterizedTypeReference<>() {}
+                    );
+                    if (response.getStatusCode() == HttpStatus.OK) {
+                        successCount.incrementAndGet();
+                    }
+                } finally {
+                    done.countDown();
+                }
+            });
+
+            ready.await();
+            start.countDown();
+            done.await();
+            executor.shutdown();
+
+            // Assert — 두 주문 모두 성공, 재고 각각 1씩 차감
+            assertThat(successCount.get()).isEqualTo(2);
+
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p1Response = testRestTemplate.exchange(
+                "/api/v1/products/" + p1, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p2Response = testRestTemplate.exchange(
+                "/api/v1/products/" + p2, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(p1Response.getBody().data().product().stockQuantity()).isEqualTo(8);
+            assertThat(p2Response.getBody().data().product().stockQuantity()).isEqualTo(8);
+        }
+
+        @DisplayName("세 스레드가 서로 다른 순서로 3개 상품을 주문해도 데드락 없이 완료된다.")
+        @Test
+        void concurrentOrders_threeProducts_deadlockPrevention() throws InterruptedException {
+            // Arrange
+            int threadCount = 3;
+            Long brandId = registerBrand("Adidas", "Impossible Is Nothing");
+            Long p1 = registerProduct(brandId, "상품X", 10000L, 10, 5);
+            Long p2 = registerProduct(brandId, "상품Y", 20000L, 10, 5);
+            Long p3 = registerProduct(brandId, "상품Z", 30000L, 10, 5);
+
+            String[] loginIds = new String[threadCount];
+            Long[] addressIds = new Long[threadCount];
+            for (int i = 0; i < threadCount; i++) {
+                String loginId = "triUser" + i;
+                registerMember(loginId, "Test1234!");
+                loginIds[i] = loginId;
+                addressIds[i] = registerAddress(loginId, "Test1234!");
+            }
+
+            // 각 스레드가 서로 다른 순서로 상품을 주문
+            Long[][] productOrders = {
+                {p1, p2, p3},  // 스레드0: 정순
+                {p3, p1, p2},  // 스레드1: 역순 시작
+                {p2, p3, p1}   // 스레드2: 중간부터
+            };
+
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch ready = new CountDownLatch(threadCount);
+            CountDownLatch start = new CountDownLatch(1);
+            CountDownLatch done = new CountDownLatch(threadCount);
+            AtomicInteger successCount = new AtomicInteger(0);
+
+            // Act
+            for (int i = 0; i < threadCount; i++) {
+                final int idx = i;
+                executor.submit(() -> {
+                    ready.countDown();
+                    try { start.await(); } catch (InterruptedException ignored) {}
+                    try {
+                        var items = List.of(
+                            new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productOrders[idx][0], 1),
+                            new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productOrders[idx][1], 1),
+                            new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productOrders[idx][2], 1)
+                        );
+                        var request = new OrderV1Dto.CreateOrderRequest(addressIds[idx], null, items);
+                        ResponseEntity<ApiResponse<OrderV1Dto.OrderResponse>> response = testRestTemplate.exchange(
+                            "/api/v1/orders", HttpMethod.POST,
+                            new HttpEntity<>(request, authHeaders(loginIds[idx], "Test1234!")),
+                            new ParameterizedTypeReference<>() {}
+                        );
+                        if (response.getStatusCode() == HttpStatus.OK) {
+                            successCount.incrementAndGet();
+                        }
+                    } finally {
+                        done.countDown();
+                    }
+                });
+            }
+
+            ready.await();
+            start.countDown();
+            done.await();
+            executor.shutdown();
+
+            // Assert — 3개 주문 모두 성공, 재고 각각 3씩 차감
+            assertThat(successCount.get()).isEqualTo(3);
+
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p1Response = testRestTemplate.exchange(
+                "/api/v1/products/" + p1, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p2Response = testRestTemplate.exchange(
+                "/api/v1/products/" + p2, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p3Response = testRestTemplate.exchange(
+                "/api/v1/products/" + p3, HttpMethod.GET, null,
+                new ParameterizedTypeReference<>() {}
+            );
+
+            assertThat(p1Response.getBody().data().product().stockQuantity()).isEqualTo(7);
+            assertThat(p2Response.getBody().data().product().stockQuantity()).isEqualTo(7);
+            assertThat(p3Response.getBody().data().product().stockQuantity()).isEqualTo(7);
+        }
+    }
+
     @DisplayName("쿠폰 동시성 테스트")
     @Nested
     class CouponConcurrency {

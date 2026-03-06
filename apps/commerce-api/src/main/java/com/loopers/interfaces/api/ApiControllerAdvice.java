@@ -8,6 +8,7 @@ import com.loopers.support.error.ErrorType;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.OptimisticLockingFailureException;
+import org.springframework.dao.PessimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -112,6 +113,12 @@ public class ApiControllerAdvice {
     @ExceptionHandler
     public ResponseEntity<ApiResponse<?>> handleOptimisticLock(OptimisticLockingFailureException e) {
         log.warn("OptimisticLockingFailureException : {}", e.getMessage(), e);
+        return failureResponse(ErrorType.CONFLICT, "다른 요청과 충돌이 발생했습니다. 다시 시도해주세요.");
+    }
+
+    @ExceptionHandler
+    public ResponseEntity<ApiResponse<?>> handlePessimisticLock(PessimisticLockingFailureException e) {
+        log.warn("PessimisticLockingFailureException : {}", e.getMessage(), e);
         return failureResponse(ErrorType.CONFLICT, "다른 요청과 충돌이 발생했습니다. 다시 시도해주세요.");
     }
 
