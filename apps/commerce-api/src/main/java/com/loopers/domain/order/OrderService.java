@@ -95,7 +95,8 @@ public class OrderService {
     public Order updateShippingAddress(Long orderId, Long memberId,
                                         String recipientName, String recipientPhone,
                                         String zipCode, String address1, String address2) {
-        Order order = getOrderForMember(orderId, memberId);
+        Order order = orderReader.findByIdAndMemberIdForUpdate(orderId, memberId)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다."));
         order.updateShippingAddress(recipientName, recipientPhone, zipCode, address1, address2);
         return order;
     }
