@@ -113,6 +113,20 @@ class ProductServiceTest {
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }
+
+        @DisplayName("수정 시 비관적 락(findByIdForUpdate)을 통해 상품을 조회한다.")
+        @Test
+        void usesForUpdateLock_whenUpdatingProduct() {
+            // Arrange
+            Product product = productService.register(1L, "에어맥스 90", "설명", 139000L, 100, 5);
+            fakeProductReader.addProduct(1L, product);
+
+            // Act
+            productService.updateInfo(1L, "에어맥스 95", "수정된 설명", 149000L, 3);
+
+            // Assert
+            assertThat(fakeProductReader.isFindByIdForUpdateCalled()).isTrue();
+        }
     }
 
     @DisplayName("상품을 삭제할 때, ")
@@ -232,6 +246,7 @@ class ProductServiceTest {
         private final Map<Long, Product> products = new HashMap<>();
         private List<Product> allProducts = List.of();
         private final Map<Long, List<Product>> productsByBrandId = new HashMap<>();
+        private boolean findByIdForUpdateCalled = false;
 
         void addProduct(Long id, Product product) {
             products.put(id, product);
@@ -245,6 +260,10 @@ class ProductServiceTest {
             this.productsByBrandId.put(brandId, products);
         }
 
+        boolean isFindByIdForUpdateCalled() {
+            return findByIdForUpdateCalled;
+        }
+
         @Override
         public Optional<Product> findById(Long id) {
             return Optional.ofNullable(products.get(id));
@@ -252,6 +271,7 @@ class ProductServiceTest {
 
         @Override
         public Optional<Product> findByIdForUpdate(Long id) {
+            findByIdForUpdateCalled = true;
             return Optional.ofNullable(products.get(id));
         }
 
