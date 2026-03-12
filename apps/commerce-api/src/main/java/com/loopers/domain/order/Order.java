@@ -7,10 +7,13 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 
 @Entity
-@Table(name = "orders")
+@Table(name = "orders", indexes = {
+    @Index(name = "idx_order_member_created", columnList = "member_id, createdAt DESC")
+})
 public class Order extends BaseEntity {
 
     @Column(name = "member_id", nullable = false)

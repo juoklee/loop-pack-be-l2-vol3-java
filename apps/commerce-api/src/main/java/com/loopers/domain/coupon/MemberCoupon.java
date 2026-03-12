@@ -7,6 +7,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import jakarta.persistence.Version;
@@ -16,6 +17,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "member_coupon", uniqueConstraints = {
     @UniqueConstraint(columnNames = {"member_id", "coupon_id"})
+}, indexes = {
+    @Index(name = "idx_membercoupon_member", columnList = "member_id")
 })
 public class MemberCoupon extends BaseEntity {
 
