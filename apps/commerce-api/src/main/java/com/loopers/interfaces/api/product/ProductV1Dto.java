@@ -27,6 +27,8 @@ public class ProductV1Dto {
         int quantity
     ) {}
 
+    public record StockResponse(int stockQuantity) {}
+
     public record ProductResponse(ProductDto product) {
 
         public record ProductDto(
@@ -34,7 +36,6 @@ public class ProductV1Dto {
             String name,
             String description,
             Long price,
-            int stockQuantity,
             int maxOrderQuantity,
             int likeCount,
             BrandDto brand
@@ -54,7 +55,6 @@ public class ProductV1Dto {
                     info.name(),
                     info.description(),
                     info.price(),
-                    info.stockQuantity(),
                     info.maxOrderQuantity(),
                     info.likeCount(),
                     new BrandDto(
@@ -81,7 +81,6 @@ public class ProductV1Dto {
                     info.name(),
                     info.description(),
                     info.price(),
-                    info.stockQuantity(),
                     info.maxOrderQuantity(),
                     info.likeCount(),
                     new ProductResponse.BrandDto(

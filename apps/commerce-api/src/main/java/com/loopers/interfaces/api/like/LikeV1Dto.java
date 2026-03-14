@@ -30,7 +30,6 @@ public class LikeV1Dto {
             String name,
             String description,
             Long price,
-            int stockQuantity,
             int maxOrderQuantity,
             int likeCount,
             BrandDto brand
@@ -51,7 +50,6 @@ public class LikeV1Dto {
                         info.product().name(),
                         info.product().description(),
                         info.product().price(),
-                        info.product().stockQuantity(),
                         info.product().maxOrderQuantity(),
                         info.product().likeCount(),
                         new BrandDto(

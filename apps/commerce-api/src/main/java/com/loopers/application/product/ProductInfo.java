@@ -8,7 +8,6 @@ public record ProductInfo(
     String name,
     String description,
     Long price,
-    int stockQuantity,
     int maxOrderQuantity,
     int likeCount,
     BrandInfo brand
@@ -19,7 +18,6 @@ public record ProductInfo(
             product.getName(),
             product.getDescription(),
             product.getPrice(),
-            product.getStockQuantity(),
             product.getMaxOrderQuantity(),
             product.getLikeCount(),
             brandInfo

@@ -12,6 +12,7 @@ import com.loopers.domain.member.MemberService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +30,7 @@ public class LikeFacade {
     private final BrandService brandService;
     private final LikeService likeService;
 
+    @CacheEvict(cacheNames = "productDetail", key = "#productId")
     @Transactional
     public LikeToggleInfo toggleProductLike(String loginId, Long productId) {
         Long memberId = getMemberId(loginId);

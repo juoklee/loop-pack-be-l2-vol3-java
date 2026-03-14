@@ -38,4 +38,10 @@ public class ProductV1Controller {
         ProductInfo info = productFacade.getProduct(productId);
         return ApiResponse.success(ProductV1Dto.ProductResponse.from(info));
     }
+
+    @GetMapping("/{productId}/stock")
+    public ApiResponse<ProductV1Dto.StockResponse> getStock(@PathVariable Long productId) {
+        int stockQuantity = productFacade.getStockQuantity(productId);
+        return ApiResponse.success(new ProductV1Dto.StockResponse(stockQuantity));
+    }
 }

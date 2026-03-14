@@ -11,6 +11,9 @@ import com.loopers.domain.product.ProductSortType;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -25,18 +28,23 @@ public class ProductFacade {
     private final ProductService productService;
     private final BrandService brandService;
 
+    @CacheEvict(cacheNames = "productList", allEntries = true)
     public ProductInfo register(Long brandId, String name, String description, Long price, int stockQuantity, int maxOrderQuantity) {
         Brand brand = brandService.getBrand(brandId);
         Product product = productService.register(brandId, name, description, price, stockQuantity, maxOrderQuantity);
         return ProductInfo.of(product, BrandInfo.from(brand));
     }
 
+    @Cacheable(cacheNames = "productDetail", key = "#id")
     public ProductInfo getProduct(Long id) {
         Product product = productService.getProduct(id);
         Brand brand = brandService.getBrand(product.getBrandId());
         return ProductInfo.of(product, BrandInfo.from(brand));
     }
 
+    @Cacheable(cacheNames = "productList",
+        key = "(#brandId != null ? #brandId : 'all') + ':' + #sort + ':' + #page + ':' + #size",
+        condition = "#keyword == null || #keyword.isEmpty()")
     public PagedInfo<ProductInfo> getProducts(String keyword, Long brandId, String sort, int page, int size) {
         ProductSortType sortType;
         try {
@@ -61,15 +69,27 @@ public class ProductFacade {
         );
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "productDetail", key = "#id"),
+        @CacheEvict(cacheNames = "productList", allEntries = true)
+    })
     public void updateInfo(Long id, String name, String description, Long price, int maxOrderQuantity) {
         productService.updateInfo(id, name, description, price, maxOrderQuantity);
     }
 
+    @Caching(evict = {
+        @CacheEvict(cacheNames = "productDetail", key = "#id"),
+        @CacheEvict(cacheNames = "productList", allEntries = true)
+    })
     public void delete(Long id) {
         productService.delete(id);
     }
 
     public void updateStock(Long id, int quantity) {
         productService.updateStock(id, quantity);
+    }
+
+    public int getStockQuantity(Long id) {
+        return productService.getProduct(id).getStockQuantity();
     }
 }
