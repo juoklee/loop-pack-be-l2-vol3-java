@@ -13,6 +13,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -39,16 +40,19 @@ class OrderConcurrencyE2ETest {
 
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public OrderConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp) {
+    public OrderConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp, CacheManager cacheManager) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
+        this.cacheManager = cacheManager;
     }
 
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
     @DisplayName("재고 동시성 테스트")
@@ -101,14 +105,14 @@ class OrderConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — 재고 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // Assert — 재고 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
             assertThat(successCount.get()).isEqualTo(threadCount);
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(90);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(90);
         }
 
         @DisplayName("재고 5개인 상품에 10명이 동시 주문하면, 5명만 성공하고 재고는 0이 된다.")
@@ -160,15 +164,15 @@ class OrderConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // Assert (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
             assertThat(successCount.get()).isEqualTo(5);
             assertThat(failCount.get()).isEqualTo(5);
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(0);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(0);
         }
     }
 
@@ -253,17 +257,17 @@ class OrderConcurrencyE2ETest {
             // Assert — 두 주문 모두 성공, 재고 각각 1씩 차감
             assertThat(successCount.get()).isEqualTo(2);
 
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p1Response = testRestTemplate.exchange(
-                "/api/v1/products/" + p1, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> p1Stock = testRestTemplate.exchange(
+                "/api/v1/products/" + p1 + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p2Response = testRestTemplate.exchange(
-                "/api/v1/products/" + p2, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> p2Stock = testRestTemplate.exchange(
+                "/api/v1/products/" + p2 + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
-            assertThat(p1Response.getBody().data().product().stockQuantity()).isEqualTo(8);
-            assertThat(p2Response.getBody().data().product().stockQuantity()).isEqualTo(8);
+            assertThat(p1Stock.getBody().data().stockQuantity()).isEqualTo(8);
+            assertThat(p2Stock.getBody().data().stockQuantity()).isEqualTo(8);
         }
 
         @DisplayName("세 스레드가 서로 다른 순서로 3개 상품을 주문해도 데드락 없이 완료된다.")
@@ -332,22 +336,22 @@ class OrderConcurrencyE2ETest {
             // Assert — 3개 주문 모두 성공, 재고 각각 3씩 차감
             assertThat(successCount.get()).isEqualTo(3);
 
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p1Response = testRestTemplate.exchange(
-                "/api/v1/products/" + p1, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> p1Stock = testRestTemplate.exchange(
+                "/api/v1/products/" + p1 + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p2Response = testRestTemplate.exchange(
-                "/api/v1/products/" + p2, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> p2Stock = testRestTemplate.exchange(
+                "/api/v1/products/" + p2 + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> p3Response = testRestTemplate.exchange(
-                "/api/v1/products/" + p3, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> p3Stock = testRestTemplate.exchange(
+                "/api/v1/products/" + p3 + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
-            assertThat(p1Response.getBody().data().product().stockQuantity()).isEqualTo(7);
-            assertThat(p2Response.getBody().data().product().stockQuantity()).isEqualTo(7);
-            assertThat(p3Response.getBody().data().product().stockQuantity()).isEqualTo(7);
+            assertThat(p1Stock.getBody().data().stockQuantity()).isEqualTo(7);
+            assertThat(p2Stock.getBody().data().stockQuantity()).isEqualTo(7);
+            assertThat(p3Stock.getBody().data().stockQuantity()).isEqualTo(7);
         }
     }
 
@@ -403,15 +407,15 @@ class OrderConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — 1번만 취소 성공, 재고 정확히 1개 복원
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // Assert — 1번만 취소 성공, 재고 정확히 1개 복원 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
             assertThat(successCount.get()).isEqualTo(1);
             assertThat(failCount.get()).isEqualTo(1);
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(100);
         }
     }
 
@@ -499,15 +503,15 @@ class OrderConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — 재고 정합성: 초기 50 - 5(기존) + 5(취소 복원) - 5(신규) = 45
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // Assert — 재고 정합성: 초기 50 - 5(기존) + 5(취소 복원) - 5(신규) = 45 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
             assertThat(createSuccess.get()).isEqualTo(5);
             assertThat(cancelSuccess.get()).isEqualTo(5);
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(45);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(45);
         }
     }
 
@@ -656,11 +660,11 @@ class OrderConcurrencyE2ETest {
             // Assert — 둘 다 성공하고, 최종 재고가 49 또는 50 (실행 순서에 따라 다름)
             assertThat(orderSuccess.get() + stockUpdateSuccess.get()).isEqualTo(2);
 
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            int finalStock = productResponse.getBody().data().product().stockQuantity();
+            int finalStock = stockResponse.getBody().data().stockQuantity();
             assertThat(finalStock).isIn(49, 50);
         }
     }

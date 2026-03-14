@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -36,16 +37,19 @@ class OrderV1ApiE2ETest {
 
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public OrderV1ApiE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp) {
+    public OrderV1ApiE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp, CacheManager cacheManager) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
+        this.cacheManager = cacheManager;
     }
 
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
     @DisplayName("POST /api/v1/orders (주문 생성)")
@@ -82,14 +86,14 @@ class OrderV1ApiE2ETest {
                 () -> assertThat(response.getBody().data().order().recipientName()).isEqualTo("홍길동")
             );
 
-            // 재고 차감 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId,
+            // 재고 차감 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(98);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(98);
         }
 
         @DisplayName("다수 상품 주문 시, 각 상품의 주문 항목이 생성된다.")
@@ -179,14 +183,14 @@ class OrderV1ApiE2ETest {
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
-            // 재고 롤백 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId,
+            // 재고 롤백 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(3);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(3);
         }
 
         @DisplayName("maxOrderQuantity 초과 시, 400 Bad Request를 반환한다.")
@@ -469,14 +473,14 @@ class OrderV1ApiE2ETest {
             );
             assertThat(orderResponse.getBody().data().order().status()).isEqualTo("CANCELLED");
 
-            // 재고 복원 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId,
+            // 재고 복원 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(100);
         }
 
         @DisplayName("이미 취소된 주문을 취소하면, 404 Not Found를 반환한다.")
@@ -784,12 +788,12 @@ class OrderV1ApiE2ETest {
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
 
-            // 재고 롤백 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // 재고 롤백 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(100);
         }
 
         @DisplayName("이미 사용된 쿠폰으로 주문하면, 400을 반환하고 재고가 롤백된다.")
@@ -824,12 +828,12 @@ class OrderV1ApiE2ETest {
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
 
-            // 재고 롤백 확인 (첫 주문으로 1개 차감 → 99개여야 함)
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // 재고 롤백 확인 (첫 주문으로 1개 차감 → 99개여야 함, 별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(99);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(99);
         }
 
         @DisplayName("최소 주문 금액 미달 시, 400을 반환한다.")
@@ -912,12 +916,12 @@ class OrderV1ApiE2ETest {
                 new ParameterizedTypeReference<ApiResponse<Object>>() {}
             );
 
-            // Assert — 재고 복원 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // Assert — 재고 복원 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse2 = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(100);
+            assertThat(stockResponse2.getBody().data().stockQuantity()).isEqualTo(100);
 
             // Assert — 쿠폰 복원 확인 (AVAILABLE 상태)
             ResponseEntity<ApiResponse<CouponV1Dto.MemberCouponListResponse>> couponResponse = testRestTemplate.exchange(

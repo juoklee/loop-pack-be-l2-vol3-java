@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -29,19 +30,23 @@ class ProductV1ApiE2ETest {
 
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
+    private final CacheManager cacheManager;
 
     @Autowired
     public ProductV1ApiE2ETest(
         TestRestTemplate testRestTemplate,
-        DatabaseCleanUp databaseCleanUp
+        DatabaseCleanUp databaseCleanUp,
+        CacheManager cacheManager
     ) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
+        this.cacheManager = cacheManager;
     }
 
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
     @DisplayName("POST /api-admin/v1/products (상품 등록)")
@@ -68,7 +73,6 @@ class ProductV1ApiE2ETest {
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.CREATED),
                 () -> assertThat(response.getBody().data().product().name()).isEqualTo("에어맥스 90"),
                 () -> assertThat(response.getBody().data().product().price()).isEqualTo(139000L),
-                () -> assertThat(response.getBody().data().product().stockQuantity()).isEqualTo(100),
                 () -> assertThat(response.getBody().data().product().maxOrderQuantity()).isEqualTo(5),
                 () -> assertThat(response.getBody().data().product().likeCount()).isZero(),
                 () -> assertThat(response.getBody().data().product().brand().name()).isEqualTo("Nike")
@@ -462,14 +466,14 @@ class ProductV1ApiE2ETest {
             // Assert
             assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
 
-            // 재고 수정 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> getResponse = testRestTemplate.exchange(
-                PRODUCT_PUBLIC + "/" + productId,
+            // 재고 수정 확인 (별도 stock API로 조회)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                PRODUCT_PUBLIC + "/" + productId + "/stock",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(getResponse.getBody().data().product().stockQuantity()).isEqualTo(200);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(200);
         }
 
         @DisplayName("음수 수량으로 수정하면, 400 Bad Request 응답을 받는다.")

@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.cache.CacheManager;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -39,16 +40,19 @@ class CouponConcurrencyE2ETest {
 
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
+    private final CacheManager cacheManager;
 
     @Autowired
-    public CouponConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp) {
+    public CouponConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp, CacheManager cacheManager) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
+        this.cacheManager = cacheManager;
     }
 
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
     }
 
     @DisplayName("쿠폰 사용 동시성 테스트")
@@ -231,12 +235,12 @@ class CouponConcurrencyE2ETest {
             assertThat(successCount.get()).isEqualTo(1);
             assertThat(failCount.get()).isEqualTo(1);
 
-            // 재고 0 확인
-            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
-                "/api/v1/products/" + productId, HttpMethod.GET, null,
+            // 재고 0 확인 (별도 stock API)
+            ResponseEntity<ApiResponse<ProductV1Dto.StockResponse>> stockResponse = testRestTemplate.exchange(
+                "/api/v1/products/" + productId + "/stock", HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().stockQuantity()).isEqualTo(0);
+            assertThat(stockResponse.getBody().data().stockQuantity()).isEqualTo(0);
 
             // 실패한 사용자의 쿠폰은 AVAILABLE 상태 확인
             long usedCount = countCouponStatus(memberCouponId1, "couponStockUser1", "Test1234!", "USED")
