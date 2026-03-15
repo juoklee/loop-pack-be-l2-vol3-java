@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 
@@ -23,47 +23,52 @@ public class LikeCountSyncScheduler {
     private final ProductService productService;
     private final BrandService brandService;
     private final ProductCacheManager productCacheManager;
+    private final TransactionTemplate transactionTemplate;
 
     @Scheduled(fixedRate = 300_000)
-    @Transactional
     public void syncLikeCounts() {
         syncProductLikeCounts();
         syncBrandLikeCounts();
     }
 
     private void syncProductLikeCounts() {
-        List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.PRODUCT);
+        transactionTemplate.executeWithoutResult(status -> {
+            List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.PRODUCT);
 
-        List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
-        productService.resetLikeCountsNotIn(targetIds);
+            List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
+            productService.resetLikeCountsNotIn(targetIds);
 
-        for (LikeCountProjection projection : counts) {
-            try {
-                productService.updateLikeCount(projection.targetId(), (int) projection.count());
-            } catch (Exception e) {
-                log.error("상품 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+            for (LikeCountProjection projection : counts) {
+                try {
+                    productService.updateLikeCount(projection.targetId(), (int) projection.count());
+                } catch (Exception e) {
+                    log.error("상품 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+                }
             }
-        }
+
+            log.info("상품 좋아요 수 동기화 완료: {}건", counts.size());
+        });
 
         productCacheManager.evictAllProductList();
         productCacheManager.evictAllProductDetail();
-        log.info("상품 좋아요 수 동기화 완료: {}건", counts.size());
     }
 
     private void syncBrandLikeCounts() {
-        List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.BRAND);
+        transactionTemplate.executeWithoutResult(status -> {
+            List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.BRAND);
 
-        List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
-        brandService.resetLikeCountsNotIn(targetIds);
+            List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
+            brandService.resetLikeCountsNotIn(targetIds);
 
-        for (LikeCountProjection projection : counts) {
-            try {
-                brandService.updateLikeCount(projection.targetId(), (int) projection.count());
-            } catch (Exception e) {
-                log.error("브랜드 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+            for (LikeCountProjection projection : counts) {
+                try {
+                    brandService.updateLikeCount(projection.targetId(), (int) projection.count());
+                } catch (Exception e) {
+                    log.error("브랜드 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+                }
             }
-        }
 
-        log.info("브랜드 좋아요 수 동기화 완료: {}건", counts.size());
+            log.info("브랜드 좋아요 수 동기화 완료: {}건", counts.size());
+        });
     }
 }

@@ -17,6 +17,7 @@ import com.loopers.support.cache.ProductCacheManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.HashMap;
 import java.util.List;
@@ -42,6 +43,13 @@ class LikeCountSyncSchedulerTest {
         likeService = mock(LikeService.class);
         productCacheManager = mock(ProductCacheManager.class);
 
+        TransactionTemplate transactionTemplate = mock(TransactionTemplate.class);
+        doAnswer(invocation -> {
+            invocation.<java.util.function.Consumer<org.springframework.transaction.TransactionStatus>>getArgument(0)
+                    .accept(null);
+            return null;
+        }).when(transactionTemplate).executeWithoutResult(any());
+
         FakeProductReader fakeProductReader = new FakeProductReader();
         fakeProductRepository = new FakeProductRepository();
         productService = new ProductService(fakeProductReader, fakeProductRepository);
@@ -50,7 +58,7 @@ class LikeCountSyncSchedulerTest {
         fakeBrandRepository = new FakeBrandRepository();
         brandService = new BrandService(fakeBrandReader, fakeBrandRepository);
 
-        scheduler = new LikeCountSyncScheduler(likeService, productService, brandService, productCacheManager);
+        scheduler = new LikeCountSyncScheduler(likeService, productService, brandService, productCacheManager, transactionTemplate);
     }
 
     @DisplayName("삭제된 엔티티가 좋아요 집계에 포함되어도, 에러를 로그로 남기고 나머지 항목을 정상 처리한다.")
