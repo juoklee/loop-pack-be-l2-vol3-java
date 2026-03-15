@@ -78,7 +78,10 @@ public class ProductService {
 
     @Transactional
     public void updateLikeCount(Long id, int likeCount) {
-        productRepository.updateLikeCount(id, likeCount);
+        int updatedCount = productRepository.updateLikeCount(id, likeCount);
+        if (updatedCount == 0) {
+            throw new CoreException(ErrorType.NOT_FOUND, "상품을 찾을 수 없습니다. id: " + id);
+        }
     }
 
     @Transactional

@@ -38,7 +38,11 @@ public class LikeCountSyncScheduler {
         productService.resetLikeCountsNotIn(targetIds);
 
         for (LikeCountProjection projection : counts) {
-            productService.updateLikeCount(projection.targetId(), (int) projection.count());
+            try {
+                productService.updateLikeCount(projection.targetId(), (int) projection.count());
+            } catch (Exception e) {
+                log.error("상품 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+            }
         }
 
         productCacheManager.evictAllProductList();
@@ -53,7 +57,11 @@ public class LikeCountSyncScheduler {
         brandService.resetLikeCountsNotIn(targetIds);
 
         for (LikeCountProjection projection : counts) {
-            brandService.updateLikeCount(projection.targetId(), (int) projection.count());
+            try {
+                brandService.updateLikeCount(projection.targetId(), (int) projection.count());
+            } catch (Exception e) {
+                log.error("브랜드 좋아요 수 동기화 실패 - targetId: {}, error: {}", projection.targetId(), e.getMessage());
+            }
         }
 
         log.info("브랜드 좋아요 수 동기화 완료: {}건", counts.size());
