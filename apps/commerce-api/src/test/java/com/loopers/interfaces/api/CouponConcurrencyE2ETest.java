@@ -51,8 +51,16 @@ class CouponConcurrencyE2ETest {
 
     @AfterEach
     void tearDown() {
-        databaseCleanUp.truncateAllTables();
-        cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+        try {
+            databaseCleanUp.truncateAllTables();
+        } finally {
+            cacheManager.getCacheNames().forEach(name -> {
+                var cache = cacheManager.getCache(name);
+                if (cache != null) {
+                    cache.clear();
+                }
+            });
+        }
     }
 
     @DisplayName("쿠폰 사용 동시성 테스트")
