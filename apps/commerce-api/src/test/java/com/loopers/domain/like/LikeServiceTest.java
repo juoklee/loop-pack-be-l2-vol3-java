@@ -127,6 +127,23 @@ class LikeServiceTest {
                 .toList();
             return new PageResult<>(filtered, filtered.size(), 1, page, size);
         }
+
+        @Override
+        public int countByTargetTypeAndTargetId(LikeTargetType targetType, Long targetId) {
+            return (int) likes.stream()
+                .filter(l -> l.getTargetType() == targetType && l.getTargetId().equals(targetId))
+                .count();
+        }
+
+        @Override
+        public List<LikeCountProjection> countAllByTargetType(LikeTargetType targetType) {
+            return likes.stream()
+                .filter(l -> l.getTargetType() == targetType)
+                .collect(java.util.stream.Collectors.groupingBy(Like::getTargetId, java.util.stream.Collectors.counting()))
+                .entrySet().stream()
+                .map(e -> new LikeCountProjection(e.getKey(), e.getValue()))
+                .toList();
+        }
     }
 
     static class FakeLikeRepository implements LikeRepository {

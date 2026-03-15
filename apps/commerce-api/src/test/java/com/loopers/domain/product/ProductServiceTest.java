@@ -320,5 +320,10 @@ class ProductServiceTest {
         public int decreaseLikeCount(Long id) {
             return 1;
         }
+
+        @Override
+        public int updateLikeCount(Long id, int likeCount) {
+            return 1;
+        }
     }
 }

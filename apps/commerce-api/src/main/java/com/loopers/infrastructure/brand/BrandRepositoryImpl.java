@@ -24,4 +24,9 @@ public class BrandRepositoryImpl implements BrandRepository {
     public int decreaseLikeCount(Long id) {
         return brandJpaRepository.decreaseLikeCount(id);
     }
+
+    @Override
+    public int updateLikeCount(Long id, int likeCount) {
+        return brandJpaRepository.updateLikeCount(id, likeCount);
+    }
 }

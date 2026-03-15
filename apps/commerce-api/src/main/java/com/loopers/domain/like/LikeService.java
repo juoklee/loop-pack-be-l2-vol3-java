@@ -5,6 +5,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -31,5 +32,15 @@ public class LikeService {
     @Transactional(readOnly = true)
     public PageResult<Like> getMyLikes(Long memberId, LikeTargetType targetType, int page, int size) {
         return likeReader.findAllByMemberIdAndTargetType(memberId, targetType, page, size);
+    }
+
+    @Transactional(readOnly = true)
+    public int countLikes(LikeTargetType targetType, Long targetId) {
+        return likeReader.countByTargetTypeAndTargetId(targetType, targetId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<LikeCountProjection> countAllLikes(LikeTargetType targetType) {
+        return likeReader.countAllByTargetType(targetType);
     }
 }

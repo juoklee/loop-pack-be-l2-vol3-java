@@ -290,5 +290,10 @@ class BrandServiceTest {
         public int decreaseLikeCount(Long id) {
             return brands.containsKey(id) ? 1 : 0;
         }
+
+        @Override
+        public int updateLikeCount(Long id, int likeCount) {
+            return brands.containsKey(id) ? 1 : 0;
+        }
     }
 }

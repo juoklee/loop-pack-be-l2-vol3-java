@@ -2,6 +2,7 @@ package com.loopers.infrastructure.like;
 
 import com.loopers.domain.PageResult;
 import com.loopers.domain.like.Like;
+import com.loopers.domain.like.LikeCountProjection;
 import com.loopers.domain.like.LikeReader;
 import com.loopers.domain.like.LikeTargetType;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +11,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Optional;
 
 @RequiredArgsConstructor
@@ -28,5 +30,17 @@ public class LikeReaderImpl implements LikeReader {
         Page<Like> result = likeJpaRepository.findAllByMemberIdAndTargetType(memberId, targetType, pageable);
         return new PageResult<>(result.getContent(), result.getTotalElements(),
             result.getTotalPages(), result.getNumber(), result.getSize());
+    }
+
+    @Override
+    public int countByTargetTypeAndTargetId(LikeTargetType targetType, Long targetId) {
+        return likeJpaRepository.countByTargetTypeAndTargetId(targetType, targetId);
+    }
+
+    @Override
+    public List<LikeCountProjection> countAllByTargetType(LikeTargetType targetType) {
+        return likeJpaRepository.countGroupByTargetType(targetType).stream()
+            .map(row -> new LikeCountProjection((Long) row[0], (Long) row[1]))
+            .toList();
     }
 }

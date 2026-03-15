@@ -61,6 +61,11 @@ public class BrandService {
         }
     }
 
+    @Transactional
+    public void updateLikeCount(Long id, int likeCount) {
+        brandRepository.updateLikeCount(id, likeCount);
+    }
+
     @Transactional(readOnly = true)
     public List<Brand> getBrandsByIds(List<Long> ids) {
         return brandReader.findAllByIds(ids);

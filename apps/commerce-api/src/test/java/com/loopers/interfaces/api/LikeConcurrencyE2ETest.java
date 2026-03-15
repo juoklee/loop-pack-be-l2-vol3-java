@@ -1,5 +1,6 @@
 package com.loopers.interfaces.api;
 
+import com.loopers.application.like.LikeCountSyncScheduler;
 import com.loopers.interfaces.api.brand.BrandV1Dto;
 import com.loopers.interfaces.api.like.LikeV1Dto;
 import com.loopers.interfaces.api.member.MemberV1Dto;
@@ -37,12 +38,15 @@ class LikeConcurrencyE2ETest {
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
     private final CacheManager cacheManager;
+    private final LikeCountSyncScheduler likeCountSyncScheduler;
 
     @Autowired
-    public LikeConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp, CacheManager cacheManager) {
+    public LikeConcurrencyE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp,
+                                  CacheManager cacheManager, LikeCountSyncScheduler likeCountSyncScheduler) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
         this.cacheManager = cacheManager;
+        this.likeCountSyncScheduler = likeCountSyncScheduler;
     }
 
     @AfterEach
@@ -96,13 +100,17 @@ class LikeConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — likeCount 확인
+            // Assert — 스케줄러 동기화 후 likeCount 확인
+            assertThat(successCount.get()).isEqualTo(threadCount);
+
+            likeCountSyncScheduler.syncLikeCounts();
+            cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+
             ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
                 "/api/v1/products/" + productId, HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
-            assertThat(successCount.get()).isEqualTo(threadCount);
             assertThat(productResponse.getBody().data().product().likeCount()).isEqualTo(10);
         }
     }
@@ -149,7 +157,10 @@ class LikeConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — likeCount가 0 또는 1 (동시 토글이므로 둘 다 가능)
+            // Assert — 스케줄러 동기화 후 likeCount 확인
+            likeCountSyncScheduler.syncLikeCounts();
+            cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+
             ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
                 "/api/v1/products/" + productId, HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
@@ -206,13 +217,16 @@ class LikeConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — likeCount 확인
+            // Assert — 스케줄러 동기화 후 likeCount 확인
+            assertThat(successCount.get()).isEqualTo(threadCount);
+
+            likeCountSyncScheduler.syncLikeCounts();
+
             ResponseEntity<ApiResponse<BrandV1Dto.BrandResponse>> brandResponse = testRestTemplate.exchange(
                 "/api/v1/brands/" + brandId, HttpMethod.GET, null,
                 new ParameterizedTypeReference<>() {}
             );
 
-            assertThat(successCount.get()).isEqualTo(threadCount);
             assertThat(brandResponse.getBody().data().brand().likeCount()).isEqualTo(10);
         }
     }

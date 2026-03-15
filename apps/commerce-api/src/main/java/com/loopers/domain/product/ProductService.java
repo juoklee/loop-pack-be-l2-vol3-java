@@ -76,6 +76,11 @@ public class ProductService {
         }
     }
 
+    @Transactional
+    public void updateLikeCount(Long id, int likeCount) {
+        productRepository.updateLikeCount(id, likeCount);
+    }
+
     @Transactional(readOnly = true)
     public List<Product> getProductsByIds(List<Long> ids) {
         return productReader.findAllByIds(ids);

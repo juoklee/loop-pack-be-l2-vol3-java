@@ -11,7 +11,6 @@ import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
-import com.loopers.support.cache.ProductCacheManager;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +28,6 @@ public class LikeFacade {
     private final ProductService productService;
     private final BrandService brandService;
     private final LikeService likeService;
-    private final ProductCacheManager productCacheManager;
 
     @Transactional
     public LikeToggleInfo toggleProductLike(String loginId, Long productId) {
@@ -37,19 +35,9 @@ public class LikeFacade {
         productService.getProduct(productId);
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.PRODUCT, productId);
+        int likeCount = likeService.countLikes(LikeTargetType.PRODUCT, productId);
 
-        if (liked) {
-            productService.increaseLikeCount(productId);
-        } else {
-            productService.decreaseLikeCount(productId);
-        }
-
-        Product product = productService.getProduct(productId);
-
-        productCacheManager.evictProductDetail(productId);
-        productCacheManager.evictLikesSortFirstPage();
-
-        return new LikeToggleInfo(liked, product.getLikeCount());
+        return new LikeToggleInfo(liked, likeCount);
     }
 
     @Transactional
@@ -58,15 +46,9 @@ public class LikeFacade {
         brandService.getBrand(brandId);
 
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.BRAND, brandId);
+        int likeCount = likeService.countLikes(LikeTargetType.BRAND, brandId);
 
-        if (liked) {
-            brandService.increaseLikeCount(brandId);
-        } else {
-            brandService.decreaseLikeCount(brandId);
-        }
-
-        Brand brand = brandService.getBrand(brandId);
-        return new LikeToggleInfo(liked, brand.getLikeCount());
+        return new LikeToggleInfo(liked, likeCount);
     }
 
     @Transactional(readOnly = true)
