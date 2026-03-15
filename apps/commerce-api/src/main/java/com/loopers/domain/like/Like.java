@@ -11,6 +11,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Index;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 import lombok.Getter;
@@ -19,10 +20,15 @@ import java.time.ZonedDateTime;
 
 @Getter
 @Entity
-@Table(name = "likes", uniqueConstraints = {
-    @UniqueConstraint(name = "uk_like_member_target",
-                      columnNames = {"member_id", "target_type", "target_id"})
-})
+@Table(name = "likes",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_like_member_target",
+                          columnNames = {"member_id", "target_type", "target_id"})
+    },
+    indexes = {
+        @Index(name = "idx_like_target_type_id", columnList = "target_type, target_id")
+    }
+)
 public class Like {
 
     @Id
