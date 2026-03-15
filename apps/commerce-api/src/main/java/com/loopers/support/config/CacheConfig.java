@@ -22,10 +22,12 @@ public class CacheConfig {
             new CaffeineCache("productDetail", Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(10))
                 .maximumSize(1000)
+                .recordStats()
                 .build()),
             new CaffeineCache("productList", Caffeine.newBuilder()
                 .expireAfterWrite(Duration.ofMinutes(5))
                 .maximumSize(500)
+                .recordStats()
                 .build())
         ));
         return cacheManager;
