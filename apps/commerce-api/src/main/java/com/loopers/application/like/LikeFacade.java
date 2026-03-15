@@ -11,8 +11,8 @@ import com.loopers.domain.member.Member;
 import com.loopers.domain.member.MemberService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
+import com.loopers.support.cache.ProductCacheManager;
 import lombok.RequiredArgsConstructor;
-import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,8 +29,8 @@ public class LikeFacade {
     private final ProductService productService;
     private final BrandService brandService;
     private final LikeService likeService;
+    private final ProductCacheManager productCacheManager;
 
-    @CacheEvict(cacheNames = "productDetail", key = "#productId")
     @Transactional
     public LikeToggleInfo toggleProductLike(String loginId, Long productId) {
         Long memberId = getMemberId(loginId);
@@ -45,6 +45,10 @@ public class LikeFacade {
         }
 
         Product product = productService.getProduct(productId);
+
+        productCacheManager.evictProductDetail(productId);
+        productCacheManager.evictLikesSortFirstPage();
+
         return new LikeToggleInfo(liked, product.getLikeCount());
     }
 

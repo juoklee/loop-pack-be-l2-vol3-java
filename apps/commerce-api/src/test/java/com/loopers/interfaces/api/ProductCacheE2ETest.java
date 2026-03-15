@@ -4,6 +4,7 @@ import com.loopers.interfaces.api.brand.BrandV1Dto;
 import com.loopers.interfaces.api.product.ProductV1Dto;
 import com.loopers.utils.DatabaseCleanUp;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -43,9 +44,18 @@ class ProductCacheE2ETest {
         this.cacheManager = cacheManager;
     }
 
+    @BeforeEach
+    void setUp() {
+        clearAllCaches();
+    }
+
     @AfterEach
     void tearDown() {
         databaseCleanUp.truncateAllTables();
+        clearAllCaches();
+    }
+
+    private void clearAllCaches() {
         cacheManager.getCache("productDetail").clear();
         cacheManager.getCache("productList").clear();
     }
@@ -130,9 +140,9 @@ class ProductCacheE2ETest {
     @Nested
     class ProductListCache {
 
-        @DisplayName("keyword 없는 목록 조회는 캐시된다.")
+        @DisplayName("keyword 없는 첫 페이지 목록 조회는 캐시된다.")
         @Test
-        void cachedWhenNoKeyword() {
+        void cachedWhenNoKeywordFirstPage() {
             // arrange
             Long brandId = registerBrand("Nike", "Just Do It");
             registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
@@ -159,6 +169,52 @@ class ProductCacheE2ETest {
             // assert - 캐시에 저장 안 됨 (keyword 요청은 condition 불충족)
             String cacheKey = brandId + ":LATEST:0:20";
             assertThat(cacheManager.getCache("productList").get(cacheKey)).isNull();
+        }
+
+        @DisplayName("두 번째 페이지 이후는 캐시되지 않는다.")
+        @Test
+        void notCachedWhenNotFirstPage() {
+            // arrange
+            Long brandId = registerBrand("Nike", "Just Do It");
+            registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+
+            // act
+            getProducts(null, brandId, "LATEST", 1, 20);
+
+            // assert - 2페이지는 캐시 안 됨
+            String cacheKey = brandId + ":LATEST:1:20";
+            assertThat(cacheManager.getCache("productList").get(cacheKey)).isNull();
+        }
+
+        @DisplayName("상품 수정 시 해당 브랜드의 목록 캐시만 무효화된다.")
+        @Test
+        void selectiveEvictOnUpdate() {
+            // arrange - 2개 브랜드 각각 상품 등록 후 목록 캐시 적재
+            Long brandA = registerBrand("Nike", "Just Do It");
+            Long brandB = registerBrand("Adidas", "Impossible Is Nothing");
+            Long productA = registerProduct(brandA, "에어맥스 90", 139000L, 100, 5);
+            registerProduct(brandB, "울트라부스트", 199000L, 50, 3);
+
+            getProducts(null, brandA, "LATEST", 0, 20);
+            getProducts(null, brandB, "LATEST", 0, 20);
+
+            String cacheKeyA = brandA + ":LATEST:0:20";
+            String cacheKeyB = brandB + ":LATEST:0:20";
+            assertThat(cacheManager.getCache("productList").get(cacheKeyA)).isNotNull();
+            assertThat(cacheManager.getCache("productList").get(cacheKeyB)).isNotNull();
+
+            // act - 브랜드A 상품 수정
+            var updateRequest = new ProductV1Dto.UpdateRequest("에어맥스 95", "신상", 159000L, 3);
+            testRestTemplate.exchange(
+                PRODUCT_ADMIN + "/" + productA,
+                HttpMethod.PUT,
+                adminEntity(updateRequest),
+                new ParameterizedTypeReference<ApiResponse<Void>>() {}
+            );
+
+            // assert - 브랜드A 캐시만 무효화, 브랜드B 캐시는 유지
+            assertThat(cacheManager.getCache("productList").get(cacheKeyA)).isNull();
+            assertThat(cacheManager.getCache("productList").get(cacheKeyB)).isNotNull();
         }
     }
 
