@@ -20,6 +20,7 @@ public class BulkDataInitializer implements ApplicationRunner {
 
     private static final Logger log = LoggerFactory.getLogger(BulkDataInitializer.class);
 
+    private static final String SEED_PREFIX = "SEED_";
     private static final int BRAND_COUNT = 200;
     private static final int PRODUCTS_PER_BRAND = 5_000;
     private static final int TOTAL_PRODUCTS = BRAND_COUNT * PRODUCTS_PER_BRAND;
@@ -32,37 +33,51 @@ public class BulkDataInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        Integer existingCount = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM product", Integer.class);
+        Integer existingCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM product p JOIN brand b ON p.brand_id = b.id WHERE b.name LIKE ?",
+                Integer.class, SEED_PREFIX + "%");
         if (existingCount != null && existingCount >= TOTAL_PRODUCTS) {
-            log.info("이미 {}건의 상품 데이터가 존재합니다. 스킵합니다.", existingCount);
+            log.info("이미 시드 상품 데이터 {}건이 존재합니다. 스킵합니다.", existingCount);
             return;
         }
 
-        log.info("========== 100만건 테스트 데이터 생성 시작 ==========");
+        log.info("========== 시드 데이터 생성 시작 (목표: {}건) ==========", TOTAL_PRODUCTS);
         long startTime = System.currentTimeMillis();
 
         insertBrands();
         insertProducts();
 
         long elapsed = System.currentTimeMillis() - startTime;
-        log.info("========== 100만건 데이터 생성 완료: {}ms ==========", elapsed);
+        log.info("========== 시드 데이터 생성 완료: {}ms ==========", elapsed);
 
-        Integer count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM product", Integer.class);
-        log.info("product 테이블 row 수: {}", count);
+        Integer count = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM product p JOIN brand b ON p.brand_id = b.id WHERE b.name LIKE ?",
+                Integer.class, SEED_PREFIX + "%");
+        log.info("시드 상품 row 수: {}", count);
     }
 
     private void insertBrands() {
-        log.info("브랜드 {}개 생성 중...", BRAND_COUNT);
+        log.info("시드 브랜드 {}개 생성 중...", BRAND_COUNT);
+
+        List<String> existingNames = jdbcTemplate.queryForList(
+                "SELECT name FROM brand WHERE name LIKE ?", String.class, SEED_PREFIX + "%");
+
         String sql = "INSERT INTO brand (name, description, like_count, created_at, updated_at) VALUES (?, ?, ?, NOW(), NOW())";
+        int created = 0;
 
         for (int i = 1; i <= BRAND_COUNT; i++) {
+            String name = SEED_PREFIX + "Brand_" + String.format("%03d", i);
+            if (existingNames.contains(name)) {
+                continue;
+            }
             jdbcTemplate.update(sql,
-                    "Brand_" + String.format("%03d", i),
-                    "브랜드 " + i + " 설명입니다.",
+                    name,
+                    "시드 브랜드 " + i + " 설명입니다.",
                     ThreadLocalRandom.current().nextInt(0, 500)
             );
+            created++;
         }
-        log.info("브랜드 생성 완료");
+        log.info("시드 브랜드 생성 완료 (신규: {}개, 기존: {}개)", created, BRAND_COUNT - created);
     }
 
     private void insertProducts() {
@@ -73,7 +88,8 @@ public class BulkDataInitializer implements ApplicationRunner {
         String[] categories = {"티셔츠", "바지", "원피스", "자켓", "코트", "니트", "셔츠", "스커트"};
         String[] adjectives = {"클래식", "모던", "빈티지", "캐주얼", "프리미엄", "베이직"};
 
-        List<Long> brandIds = jdbcTemplate.queryForList("SELECT id FROM brand ORDER BY id", Long.class);
+        List<Long> brandIds = jdbcTemplate.queryForList(
+                "SELECT id FROM brand WHERE name LIKE ? ORDER BY id", Long.class, SEED_PREFIX + "%");
 
         int totalInserted = 0;
 
@@ -94,7 +110,7 @@ public class BulkDataInitializer implements ApplicationRunner {
 
                     ps.setLong(1, brandId);
                     ps.setString(2, adj + " " + category + " #" + (currentBrandIdx * PRODUCTS_PER_BRAND + i + 1));
-                    ps.setString(3, "Brand_" + String.format("%03d", currentBrandIdx + 1) + "의 " + adj + " " + category + " 상품입니다.");
+                    ps.setString(3, SEED_PREFIX + "Brand_" + String.format("%03d", currentBrandIdx + 1) + "의 " + adj + " " + category + " 상품입니다.");
                     ps.setLong(4, price);
                     ps.setInt(5, stock);
                     ps.setInt(6, 5);
