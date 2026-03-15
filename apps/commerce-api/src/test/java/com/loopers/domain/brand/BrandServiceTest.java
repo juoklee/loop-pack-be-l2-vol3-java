@@ -223,6 +223,31 @@ class BrandServiceTest {
         }
     }
 
+    @DisplayName("브랜드 좋아요 수를 동기화할 때, ")
+    @Nested
+    class UpdateLikeCount {
+
+        @DisplayName("존재하는 브랜드의 좋아요 수를 동기화하면, 정상 처리된다.")
+        @Test
+        void succeeds_whenBrandExists() {
+            // Arrange
+            fakeBrandRepository.save(Brand.create("Nike", "Just Do It"));
+
+            // Act & Assert (예외 없이 정상 수행)
+            brandService.updateLikeCount(1L, 10);
+        }
+
+        @DisplayName("존재하지 않는 브랜드의 좋아요 수를 동기화하면, NOT_FOUND 예외가 발생한다.")
+        @Test
+        void throwsNotFound_whenBrandNotExists() {
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () -> {
+                brandService.updateLikeCount(999L, 10);
+            });
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
+        }
+    }
+
     // Fake 구현체
     static class FakeBrandReader implements BrandReader {
         private final Map<Long, Brand> brands = new HashMap<>();
