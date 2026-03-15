@@ -325,5 +325,15 @@ class ProductServiceTest {
         public int updateLikeCount(Long id, int likeCount) {
             return 1;
         }
+
+        @Override
+        public int resetLikeCountsNotIn(List<Long> ids) {
+            return 0;
+        }
+
+        @Override
+        public int resetAllLikeCounts() {
+            return 0;
+        }
     }
 }

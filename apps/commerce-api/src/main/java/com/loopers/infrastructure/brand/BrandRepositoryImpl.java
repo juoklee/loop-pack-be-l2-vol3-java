@@ -5,6 +5,8 @@ import com.loopers.domain.brand.BrandRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
+
 @RequiredArgsConstructor
 @Component
 public class BrandRepositoryImpl implements BrandRepository {
@@ -28,5 +30,15 @@ public class BrandRepositoryImpl implements BrandRepository {
     @Override
     public int updateLikeCount(Long id, int likeCount) {
         return brandJpaRepository.updateLikeCount(id, likeCount);
+    }
+
+    @Override
+    public int resetLikeCountsNotIn(List<Long> ids) {
+        return brandJpaRepository.resetLikeCountsNotIn(ids);
+    }
+
+    @Override
+    public int resetAllLikeCounts() {
+        return brandJpaRepository.resetAllLikeCounts();
     }
 }

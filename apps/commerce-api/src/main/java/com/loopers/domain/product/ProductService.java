@@ -81,6 +81,15 @@ public class ProductService {
         productRepository.updateLikeCount(id, likeCount);
     }
 
+    @Transactional
+    public void resetLikeCountsNotIn(List<Long> ids) {
+        if (ids.isEmpty()) {
+            productRepository.resetAllLikeCounts();
+        } else {
+            productRepository.resetLikeCountsNotIn(ids);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<Product> getProductsByIds(List<Long> ids) {
         return productReader.findAllByIds(ids);

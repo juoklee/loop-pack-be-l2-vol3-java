@@ -33,23 +33,29 @@ public class LikeCountSyncScheduler {
 
     private void syncProductLikeCounts() {
         List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.PRODUCT);
+
+        List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
+        productService.resetLikeCountsNotIn(targetIds);
+
         for (LikeCountProjection projection : counts) {
             productService.updateLikeCount(projection.targetId(), (int) projection.count());
         }
-        if (!counts.isEmpty()) {
-            productCacheManager.evictAllProductList();
-            productCacheManager.evictAllProductDetail();
-            log.info("상품 좋아요 수 동기화 완료: {}건", counts.size());
-        }
+
+        productCacheManager.evictAllProductList();
+        productCacheManager.evictAllProductDetail();
+        log.info("상품 좋아요 수 동기화 완료: {}건", counts.size());
     }
 
     private void syncBrandLikeCounts() {
         List<LikeCountProjection> counts = likeService.countAllLikes(LikeTargetType.BRAND);
+
+        List<Long> targetIds = counts.stream().map(LikeCountProjection::targetId).toList();
+        brandService.resetLikeCountsNotIn(targetIds);
+
         for (LikeCountProjection projection : counts) {
             brandService.updateLikeCount(projection.targetId(), (int) projection.count());
         }
-        if (!counts.isEmpty()) {
-            log.info("브랜드 좋아요 수 동기화 완료: {}건", counts.size());
-        }
+
+        log.info("브랜드 좋아요 수 동기화 완료: {}건", counts.size());
     }
 }

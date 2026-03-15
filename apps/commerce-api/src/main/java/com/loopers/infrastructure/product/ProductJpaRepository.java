@@ -34,4 +34,12 @@ public interface ProductJpaRepository extends JpaRepository<Product, Long> {
     @Modifying(clearAutomatically = true)
     @Query("UPDATE Product p SET p.likeCount = :likeCount WHERE p.id = :id AND p.deletedAt IS NULL")
     int updateLikeCount(@Param("id") Long id, @Param("likeCount") int likeCount);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Product p SET p.likeCount = 0 WHERE p.likeCount > 0 AND p.deletedAt IS NULL AND p.id NOT IN :ids")
+    int resetLikeCountsNotIn(@Param("ids") List<Long> ids);
+
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE Product p SET p.likeCount = 0 WHERE p.likeCount > 0 AND p.deletedAt IS NULL")
+    int resetAllLikeCounts();
 }

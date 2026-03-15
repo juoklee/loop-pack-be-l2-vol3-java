@@ -169,6 +169,60 @@ class LikeV1ApiE2ETest {
             assertThat(productResponse.getBody().data().product().likeCount()).isEqualTo(1);
         }
 
+        @DisplayName("좋아요 후 동기화 → 좋아요 취소 후 동기화하면 상품/브랜드 likeCount가 0이 된다.")
+        @Test
+        void likeCountResetToZero_afterUnlikeAndSync() {
+            // Arrange
+            registerMember("user1", "Test1234!");
+            Long brandId = registerBrand("Nike", "Just Do It");
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
+            HttpHeaders headers = authHeaders("user1", "Test1234!");
+
+            // Act 1 - 좋아요 + 동기화
+            toggleProductLike(headers, productId);
+            toggleBrandLike(headers, brandId);
+            likeCountSyncScheduler.syncLikeCounts();
+            cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+
+            // Assert 1 - likeCount가 1로 반영
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> afterLike = testRestTemplate.exchange(
+                "/api/v1/products/" + productId,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(afterLike.getBody().data().product().likeCount()).isEqualTo(1);
+            assertThat(afterLike.getBody().data().product().brand().likeCount()).isEqualTo(1);
+
+            // Act 2 - 좋아요 취소 + 동기화
+            toggleProductLike(headers, productId);
+            toggleBrandLike(headers, brandId);
+            likeCountSyncScheduler.syncLikeCounts();
+            cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
+
+            // Assert 2 - 상품 상세에서 likeCount가 0
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> afterUnlike = testRestTemplate.exchange(
+                "/api/v1/products/" + productId,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertAll(
+                () -> assertThat(afterUnlike.getBody().data().product().likeCount()).isZero(),
+                () -> assertThat(afterUnlike.getBody().data().product().brand().likeCount()).isZero()
+            );
+
+            // Assert 3 - 좋아요순 목록에서도 likeCount가 0
+            ResponseEntity<ApiResponse<ProductV1Dto.ProductListResponse>> listResponse = testRestTemplate.exchange(
+                "/api/v1/products?sort=LIKES_DESC&page=0&size=20",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(listResponse.getBody().data().products())
+                .allMatch(p -> p.likeCount() == 0);
+        }
+
         @DisplayName("존재하지 않는 상품에 좋아요하면, 404 Not Found를 반환한다.")
         @Test
         void returnsNotFound_whenProductNotExists() {

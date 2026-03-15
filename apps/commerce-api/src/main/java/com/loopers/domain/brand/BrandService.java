@@ -69,6 +69,15 @@ public class BrandService {
         }
     }
 
+    @Transactional
+    public void resetLikeCountsNotIn(List<Long> ids) {
+        if (ids.isEmpty()) {
+            brandRepository.resetAllLikeCounts();
+        } else {
+            brandRepository.resetLikeCountsNotIn(ids);
+        }
+    }
+
     @Transactional(readOnly = true)
     public List<Brand> getBrandsByIds(List<Long> ids) {
         return brandReader.findAllByIds(ids);

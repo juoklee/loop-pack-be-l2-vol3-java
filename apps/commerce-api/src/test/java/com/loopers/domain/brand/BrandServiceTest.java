@@ -320,5 +320,15 @@ class BrandServiceTest {
         public int updateLikeCount(Long id, int likeCount) {
             return brands.containsKey(id) ? 1 : 0;
         }
+
+        @Override
+        public int resetLikeCountsNotIn(List<Long> ids) {
+            return 0;
+        }
+
+        @Override
+        public int resetAllLikeCounts() {
+            return 0;
+        }
     }
 }
