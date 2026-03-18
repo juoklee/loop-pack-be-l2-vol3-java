@@ -65,7 +65,7 @@ public class Order extends BaseEntity {
         this.memberCouponId = memberCouponId;
         this.originalAmount = originalAmount;
         this.discountAmount = discountAmount;
-        this.status = OrderStatus.COMPLETED;
+        this.status = OrderStatus.PENDING_PAYMENT;
     }
 
     public static Order create(Long memberId, String recipientName, String recipientPhone,
@@ -94,9 +94,23 @@ public class Order extends BaseEntity {
                          totalAmount, memberCouponId, originalAmount, discountAmount);
     }
 
+    public void completePayment() {
+        if (this.status != OrderStatus.PENDING_PAYMENT) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "결제 대기 상태의 주문만 결제 완료할 수 있습니다.");
+        }
+        this.status = OrderStatus.COMPLETED;
+    }
+
+    public void failPayment() {
+        if (this.status != OrderStatus.PENDING_PAYMENT) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "결제 대기 상태의 주문만 결제 실패 처리할 수 있습니다.");
+        }
+        this.status = OrderStatus.PAYMENT_FAILED;
+    }
+
     public void cancel() {
-        if (this.status == OrderStatus.CANCELLED) {
-            throw new CoreException(ErrorType.BAD_REQUEST, "이미 취소된 주문입니다.");
+        if (this.status != OrderStatus.COMPLETED && this.status != OrderStatus.PENDING_PAYMENT) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "취소할 수 없는 주문 상태입니다.");
         }
         this.status = OrderStatus.CANCELLED;
     }

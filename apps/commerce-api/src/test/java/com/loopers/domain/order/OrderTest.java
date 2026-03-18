@@ -16,9 +16,9 @@ class OrderTest {
     @Nested
     class Create {
 
-        @DisplayName("모든 필드가 유효하면, COMPLETED 상태로 생성된다.")
+        @DisplayName("모든 필드가 유효하면, PENDING_PAYMENT 상태로 생성된다.")
         @Test
-        void createsOrder_withCompletedStatus() {
+        void createsOrder_withPendingPaymentStatus() {
             // Arrange & Act
             Order order = Order.create(
                 1L, "홍길동", "010-1234-5678", "12345",
@@ -34,7 +34,7 @@ class OrderTest {
                 () -> assertThat(order.getAddress1()).isEqualTo("서울시 강남구 테헤란로 123"),
                 () -> assertThat(order.getAddress2()).isEqualTo("101동 202호"),
                 () -> assertThat(order.getTotalAmount()).isEqualTo(258000L),
-                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED)
+                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT)
             );
         }
 
@@ -144,9 +144,92 @@ class OrderTest {
         }
     }
 
+    @DisplayName("결제 완료할 때, ")
+    @Nested
+    class CompletePayment {
+
+        @DisplayName("PENDING_PAYMENT 상태이면, COMPLETED로 변경된다.")
+        @Test
+        void completesPayment_whenPendingPayment() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Act
+            order.completePayment();
+
+            // Assert
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+        }
+
+        @DisplayName("COMPLETED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenAlreadyCompleted() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+            order.completePayment();
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, order::completePayment);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("결제 실패할 때, ")
+    @Nested
+    class FailPayment {
+
+        @DisplayName("PENDING_PAYMENT 상태이면, PAYMENT_FAILED로 변경된다.")
+        @Test
+        void failsPayment_whenPendingPayment() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Act
+            order.failPayment();
+
+            // Assert
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.PAYMENT_FAILED);
+        }
+
+        @DisplayName("COMPLETED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenAlreadyCompleted() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+            order.completePayment();
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, order::failPayment);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
     @DisplayName("주문을 취소할 때, ")
     @Nested
     class Cancel {
+
+        @DisplayName("PENDING_PAYMENT 상태이면, CANCELLED로 변경된다.")
+        @Test
+        void cancelsOrder_whenPendingPayment() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Act
+            order.cancel();
+
+            // Assert
+            assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+        }
 
         @DisplayName("COMPLETED 상태이면, CANCELLED로 변경된다.")
         @Test
@@ -155,6 +238,7 @@ class OrderTest {
             Order order = Order.create(
                 1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
             );
+            order.completePayment();
 
             // Act
             order.cancel();
@@ -176,6 +260,20 @@ class OrderTest {
             CoreException exception = assertThrows(CoreException.class, order::cancel);
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
+
+        @DisplayName("PAYMENT_FAILED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPaymentFailed() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+            order.failPayment();
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, order::cancel);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
     }
 
     @DisplayName("배송지를 수정할 때, ")
@@ -189,6 +287,7 @@ class OrderTest {
             Order order = Order.create(
                 1L, "홍길동", "010-1234-5678", "12345", "기존 주소", null, 100000L
             );
+            order.completePayment();
 
             // Act
             order.updateShippingAddress("김철수", "010-9999-9999", "67890", "새 주소", "301동");
@@ -201,6 +300,21 @@ class OrderTest {
                 () -> assertThat(order.getAddress1()).isEqualTo("새 주소"),
                 () -> assertThat(order.getAddress2()).isEqualTo("301동")
             );
+        }
+
+        @DisplayName("PENDING_PAYMENT 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenStatusIsPendingPayment() {
+            // Arrange
+            Order order = Order.create(
+                1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L
+            );
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                order.updateShippingAddress("김철수", "010-9999-9999", "67890", "새 주소", null)
+            );
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
 
         @DisplayName("CANCELLED 상태이면, BAD_REQUEST 예외가 발생한다.")
