@@ -38,12 +38,16 @@ class OrderV1ApiE2ETest {
     private final TestRestTemplate testRestTemplate;
     private final DatabaseCleanUp databaseCleanUp;
     private final CacheManager cacheManager;
+    private final com.loopers.infrastructure.order.OrderJpaRepository orderJpaRepository;
 
     @Autowired
-    public OrderV1ApiE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp, CacheManager cacheManager) {
+    public OrderV1ApiE2ETest(TestRestTemplate testRestTemplate, DatabaseCleanUp databaseCleanUp,
+                              CacheManager cacheManager,
+                              com.loopers.infrastructure.order.OrderJpaRepository orderJpaRepository) {
         this.testRestTemplate = testRestTemplate;
         this.databaseCleanUp = databaseCleanUp;
         this.cacheManager = cacheManager;
+        this.orderJpaRepository = orderJpaRepository;
     }
 
     @AfterEach
@@ -80,7 +84,7 @@ class OrderV1ApiE2ETest {
             assertAll(
                 () -> assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK),
                 () -> assertThat(response.getBody().data().order().totalAmount()).isEqualTo(278000L),
-                () -> assertThat(response.getBody().data().order().status()).isEqualTo("COMPLETED"),
+                () -> assertThat(response.getBody().data().order().status()).isEqualTo("PENDING_PAYMENT"),
                 () -> assertThat(response.getBody().data().order().items()).hasSize(1),
                 () -> assertThat(response.getBody().data().order().items().get(0).quantity()).isEqualTo(2),
                 () -> assertThat(response.getBody().data().order().recipientName()).isEqualTo("홍길동")
@@ -535,6 +539,11 @@ class OrderV1ApiE2ETest {
             Long orderId = createOrderAndGetId(headers, addressId, List.of(
                 new OrderV1Dto.CreateOrderRequest.OrderItemRequest(productId, 1)
             ));
+
+            // 주문을 COMPLETED 상태로 변경 (배송지 수정은 COMPLETED 상태에서만 가능)
+            com.loopers.domain.order.Order order = orderJpaRepository.findById(orderId).orElseThrow();
+            order.completePayment();
+            orderJpaRepository.save(order);
 
             var updateRequest = new OrderV1Dto.UpdateShippingAddressRequest(
                 "김철수", "010-9999-9999", "54321", "서울시 서초구", "202호"

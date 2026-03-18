@@ -53,7 +53,7 @@ class OrderServiceTest {
             assertAll(
                 () -> assertThat(order.getMemberId()).isEqualTo(1L),
                 () -> assertThat(order.getTotalAmount()).isEqualTo(258000L),
-                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED),
+                () -> assertThat(order.getStatus()).isEqualTo(OrderStatus.PENDING_PAYMENT),
                 () -> assertThat(fakeOrderRepository.getSavedOrders()).hasSize(1)
             );
         }
