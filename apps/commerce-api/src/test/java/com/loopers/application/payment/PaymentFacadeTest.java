@@ -280,6 +280,80 @@ class PaymentFacadeTest {
     }
 
     @Nested
+    @DisplayName("timeoutPayment")
+    class TimeoutPayment {
+
+        @Test
+        @DisplayName("PROCESSING 상태의 결제를 타임아웃 처리하고 재고를 복원한다")
+        void success() {
+            // given
+            Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.markProcessing("txn-001");
+            given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
+
+            Order order = mock(Order.class);
+            given(orderService.getOrder(ORDER_ID)).willReturn(order);
+            given(orderService.getOrderItems(ORDER_ID)).willReturn(List.of());
+            given(order.getMemberCouponId()).willReturn(null);
+
+            // when
+            paymentFacade.timeoutPayment(PAYMENT_ID);
+
+            // then
+            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.TIMEOUT);
+            assertThat(payment.getFailReason()).isEqualTo("PG 응답 타임아웃");
+            verify(order).failPayment();
+        }
+    }
+
+    @Nested
+    @DisplayName("processCallback — 늦은 콜백 방어")
+    class LateCallbackDefense {
+
+        @Test
+        @DisplayName("TIMEOUT 상태에서 늦은 SUCCESS 콜백이 오면 Payment는 COMPLETED이지만 Order는 변경하지 않는다")
+        void lateSuccessCallbackAfterTimeout() {
+            // given
+            Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.markProcessing("txn-001");
+            payment.timeout();
+            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+
+            Order order = mock(Order.class);
+            given(order.getStatus()).willReturn(OrderStatus.PAYMENT_FAILED);
+            given(orderService.getOrder(ORDER_ID)).willReturn(order);
+
+            // when
+            PaymentInfo result = paymentFacade.processCallback("txn-001", "SUCCESS", null);
+
+            // then
+            assertThat(result.status()).isEqualTo("COMPLETED");
+            verify(order, never()).completePayment();
+        }
+
+        @Test
+        @DisplayName("TIMEOUT 상태에서 콜백 SUCCESS가 오고 Order가 아직 PENDING_PAYMENT이면 정상 완료한다")
+        void lateSuccessCallbackOrderStillPending() {
+            // given
+            Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.markProcessing("txn-001");
+            payment.timeout();
+            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+
+            Order order = mock(Order.class);
+            given(order.getStatus()).willReturn(OrderStatus.PENDING_PAYMENT);
+            given(orderService.getOrder(ORDER_ID)).willReturn(order);
+
+            // when
+            PaymentInfo result = paymentFacade.processCallback("txn-001", "SUCCESS", null);
+
+            // then
+            assertThat(result.status()).isEqualTo("COMPLETED");
+            verify(order).completePayment();
+        }
+    }
+
+    @Nested
     @DisplayName("getPayment")
     class GetPayment {
 

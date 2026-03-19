@@ -11,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import static com.loopers.application.payment.PaymentFacade.formatOrderIdForPg;
 
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Slf4j
@@ -19,6 +20,7 @@ import java.util.List;
 public class PaymentRecoveryScheduler {
 
     private static final int STUCK_THRESHOLD_SECONDS = 120;
+    private static final int TIMEOUT_THRESHOLD_SECONDS = 300;
     private static final int BATCH_LIMIT = 10;
 
     private final PaymentService paymentService;
@@ -45,11 +47,29 @@ public class PaymentRecoveryScheduler {
                         payment.getTransactionKey(), pgResponse.status(), pgResponse.reason()
                     );
                     log.info("PROCESSING 결제 복구 완료. paymentId={}, status={}", payment.getId(), pgResponse.status());
+                } else if (isExceededTimeout(payment)) {
+                    paymentFacade.timeoutPayment(payment.getId());
+                    log.info("PROCESSING 결제 타임아웃 처리. paymentId={}", payment.getId());
                 }
             } catch (Exception e) {
-                log.warn("PROCESSING 결제 복구 실패. paymentId={}, error={}", payment.getId(), e.getMessage());
+                if (isExceededTimeout(payment)) {
+                    try {
+                        paymentFacade.timeoutPayment(payment.getId());
+                        log.info("PROCESSING 결제 타임아웃 처리 (PG 조회 실패). paymentId={}", payment.getId());
+                    } catch (Exception te) {
+                        log.warn("PROCESSING 결제 타임아웃 처리 실패. paymentId={}, error={}", payment.getId(), te.getMessage());
+                    }
+                } else {
+                    log.warn("PROCESSING 결제 복구 실패. paymentId={}, error={}", payment.getId(), e.getMessage());
+                }
             }
         }
+    }
+
+    private boolean isExceededTimeout(Payment payment) {
+        return payment.getUpdatedAt()
+            .plusSeconds(TIMEOUT_THRESHOLD_SECONDS)
+            .isBefore(ZonedDateTime.now());
     }
 
     private void recoverStuckRequested() {

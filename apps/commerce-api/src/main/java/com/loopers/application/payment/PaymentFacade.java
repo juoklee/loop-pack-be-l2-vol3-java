@@ -123,6 +123,14 @@ public class PaymentFacade {
         return PaymentInfo.from(payment);
     }
 
+    @Transactional
+    public void timeoutPayment(Long paymentId) {
+        Payment payment = paymentService.getPayment(paymentId);
+        payment.timeout();
+        compensateOrder(payment);
+        log.info("결제 타임아웃 처리 완료. paymentId={}, orderId={}", paymentId, payment.getOrderId());
+    }
+
     @Transactional(readOnly = true)
     public PaymentInfo getPayment(String loginId, Long paymentId) {
         Long memberId = getMemberId(loginId);
@@ -141,6 +149,11 @@ public class PaymentFacade {
 
     private void completeOrder(Payment payment) {
         Order order = orderService.getOrder(payment.getOrderId());
+        if (order.getStatus() == com.loopers.domain.order.OrderStatus.PAYMENT_FAILED) {
+            log.warn("늦은 PG 성공: 주문이 이미 실패 처리됨. 환불 필요. paymentId={}, orderId={}",
+                payment.getId(), payment.getOrderId());
+            return;
+        }
         order.completePayment();
     }
 
