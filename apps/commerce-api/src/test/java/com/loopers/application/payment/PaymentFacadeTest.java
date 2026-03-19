@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
@@ -54,6 +55,11 @@ class PaymentFacadeTest {
     private static final Long MEMBER_ID = 1L;
     private static final Long ORDER_ID = 10L;
     private static final Long PAYMENT_ID = 100L;
+
+    @BeforeEach
+    void setUp() {
+        ReflectionTestUtils.setField(paymentFacade, "self", paymentFacade);
+    }
 
     private void stubMember() {
         Member member = mock(Member.class);

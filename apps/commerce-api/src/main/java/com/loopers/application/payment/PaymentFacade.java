@@ -16,6 +16,8 @@ import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +35,9 @@ public class PaymentFacade {
     private final ProductService productService;
     private final CouponService couponService;
     private final PaymentGateway paymentGateway;
+
+    @Lazy @Autowired
+    private PaymentFacade self;
 
     @Transactional
     public PaymentInfo createPayment(String loginId, Long orderId, String cardType, String cardNo) {
@@ -67,8 +72,8 @@ public class PaymentFacade {
             payment.getAmount()
         );
 
-        // PG 응답에 따른 상태 갱신 (별도 트랜잭션)
-        return processPaymentResponse(paymentId, pgResponse);
+        // PG 응답에 따른 상태 갱신 (별도 트랜잭션 — self-injection으로 프록시 통해 호출)
+        return self.processPaymentResponse(paymentId, pgResponse);
     }
 
     @Transactional
