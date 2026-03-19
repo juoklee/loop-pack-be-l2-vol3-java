@@ -61,7 +61,7 @@ public class PaymentFacade {
         // PG 호출 (트랜잭션 밖)
         PaymentGatewayResponse pgResponse = paymentGateway.requestPayment(
             memberId,
-            String.valueOf(payment.getOrderId()),
+            formatOrderIdForPg(payment.getOrderId()),
             payment.getCardType(),
             payment.getCardNo(),
             payment.getAmount()
@@ -171,5 +171,9 @@ public class PaymentFacade {
     private Long getMemberId(String loginId) {
         Member member = memberService.getMemberByLoginId(loginId);
         return member.getId();
+    }
+
+    static String formatOrderIdForPg(Long orderId) {
+        return String.format("%06d", orderId);
     }
 }

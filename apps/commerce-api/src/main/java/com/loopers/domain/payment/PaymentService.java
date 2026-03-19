@@ -36,4 +36,16 @@ public class PaymentService {
     public List<Payment> getPaymentsByOrderId(Long orderId) {
         return paymentReader.findAllByOrderId(orderId);
     }
+
+    public List<Payment> getStuckProcessing(int thresholdSeconds) {
+        return paymentReader.findStuckProcessing(thresholdSeconds);
+    }
+
+    public List<Payment> getStuckRequested(int thresholdSeconds) {
+        return paymentReader.findStuckRequested(thresholdSeconds);
+    }
+
+    public List<Payment> getTimedOut() {
+        return paymentReader.findTimedOut();
+    }
 }
