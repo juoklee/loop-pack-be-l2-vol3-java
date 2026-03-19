@@ -37,15 +37,15 @@ public class PaymentService {
         return paymentReader.findAllByOrderId(orderId);
     }
 
-    public List<Payment> getStuckProcessing(int thresholdSeconds) {
-        return paymentReader.findStuckProcessing(thresholdSeconds);
+    public List<Payment> getStuckProcessing(int thresholdSeconds, int limit) {
+        return paymentReader.findStuckProcessing(thresholdSeconds, limit);
     }
 
-    public List<Payment> getStuckRequested(int thresholdSeconds) {
-        return paymentReader.findStuckRequested(thresholdSeconds);
+    public List<Payment> getStuckRequested(int thresholdSeconds, int limit) {
+        return paymentReader.findStuckRequested(thresholdSeconds, limit);
     }
 
-    public List<Payment> getTimedOut() {
-        return paymentReader.findTimedOut();
+    public List<Payment> getTimedOut(int limit) {
+        return paymentReader.findTimedOut(limit);
     }
 }

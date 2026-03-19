@@ -19,6 +19,7 @@ import java.util.List;
 public class PaymentRecoveryScheduler {
 
     private static final int STUCK_THRESHOLD_SECONDS = 120;
+    private static final int BATCH_LIMIT = 10;
 
     private final PaymentService paymentService;
     private final PaymentGateway paymentGateway;
@@ -32,7 +33,7 @@ public class PaymentRecoveryScheduler {
     }
 
     private void recoverStuckProcessing() {
-        List<Payment> stuckPayments = paymentService.getStuckProcessing(STUCK_THRESHOLD_SECONDS);
+        List<Payment> stuckPayments = paymentService.getStuckProcessing(STUCK_THRESHOLD_SECONDS, BATCH_LIMIT);
         for (Payment payment : stuckPayments) {
             try {
                 PaymentGatewayResponse pgResponse = paymentGateway.getPaymentStatus(
@@ -52,7 +53,7 @@ public class PaymentRecoveryScheduler {
     }
 
     private void recoverStuckRequested() {
-        List<Payment> stuckPayments = paymentService.getStuckRequested(STUCK_THRESHOLD_SECONDS);
+        List<Payment> stuckPayments = paymentService.getStuckRequested(STUCK_THRESHOLD_SECONDS, BATCH_LIMIT);
         for (Payment payment : stuckPayments) {
             try {
                 List<PaymentGatewayResponse> pgResponses = paymentGateway.getPaymentsByOrderId(
@@ -80,7 +81,7 @@ public class PaymentRecoveryScheduler {
     }
 
     private void recoverTimedOut() {
-        List<Payment> timedOutPayments = paymentService.getTimedOut();
+        List<Payment> timedOutPayments = paymentService.getTimedOut(BATCH_LIMIT);
         for (Payment payment : timedOutPayments) {
             try {
                 if (payment.getTransactionKey() == null) {

@@ -8,7 +8,7 @@ public interface PaymentReader {
     Optional<Payment> findByTransactionKey(String transactionKey);
     Optional<Payment> findActiveByOrderId(Long orderId);
     List<Payment> findAllByOrderId(Long orderId);
-    List<Payment> findStuckProcessing(int thresholdSeconds);
-    List<Payment> findStuckRequested(int thresholdSeconds);
-    List<Payment> findTimedOut();
+    List<Payment> findStuckProcessing(int thresholdSeconds, int limit);
+    List<Payment> findStuckRequested(int thresholdSeconds, int limit);
+    List<Payment> findTimedOut(int limit);
 }

@@ -42,7 +42,7 @@ public class PaymentReaderImpl implements PaymentReader {
     }
 
     @Override
-    public List<Payment> findStuckProcessing(int thresholdSeconds) {
+    public List<Payment> findStuckProcessing(int thresholdSeconds, int limit) {
         QPayment payment = QPayment.payment;
         ZonedDateTime threshold = ZonedDateTime.now().minusSeconds(thresholdSeconds);
 
@@ -51,11 +51,13 @@ public class PaymentReaderImpl implements PaymentReader {
                 payment.status.eq(PaymentStatus.PROCESSING),
                 payment.updatedAt.before(threshold)
             )
+            .orderBy(payment.updatedAt.asc())
+            .limit(limit)
             .fetch();
     }
 
     @Override
-    public List<Payment> findStuckRequested(int thresholdSeconds) {
+    public List<Payment> findStuckRequested(int thresholdSeconds, int limit) {
         QPayment payment = QPayment.payment;
         ZonedDateTime threshold = ZonedDateTime.now().minusSeconds(thresholdSeconds);
 
@@ -64,11 +66,19 @@ public class PaymentReaderImpl implements PaymentReader {
                 payment.status.eq(PaymentStatus.REQUESTED),
                 payment.updatedAt.before(threshold)
             )
+            .orderBy(payment.updatedAt.asc())
+            .limit(limit)
             .fetch();
     }
 
     @Override
-    public List<Payment> findTimedOut() {
-        return paymentJpaRepository.findAllByStatus(PaymentStatus.TIMEOUT);
+    public List<Payment> findTimedOut(int limit) {
+        QPayment payment = QPayment.payment;
+
+        return queryFactory.selectFrom(payment)
+            .where(payment.status.eq(PaymentStatus.TIMEOUT))
+            .orderBy(payment.updatedAt.asc())
+            .limit(limit)
+            .fetch();
     }
 }
