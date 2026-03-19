@@ -49,6 +49,7 @@ resilience4j:
         retry-exceptions:
           - java.net.SocketTimeoutException
           - org.springframework.web.client.ResourceAccessException
+          - org.springframework.web.client.HttpServerErrorException
         ignore-exceptions:
           - com.loopers.support.error.CoreException
 

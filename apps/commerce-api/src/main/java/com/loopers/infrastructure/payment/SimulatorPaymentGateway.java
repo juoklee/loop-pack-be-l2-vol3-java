@@ -25,8 +25,8 @@ public class SimulatorPaymentGateway implements PaymentGateway {
     private final PgClientConfig pgClientConfig;
 
     @Override
-    @CircuitBreaker(name = "pgCircuit", fallbackMethod = "requestPaymentFallback")
-    @Retry(name = "pgRetry")
+    @CircuitBreaker(name = "pgCircuit")
+    @Retry(name = "pgRetry", fallbackMethod = "requestPaymentFallback")
     public PaymentGatewayResponse requestPayment(Long memberId, String orderId,
                                                   String cardType, String cardNo,
                                                   Long amount) {
