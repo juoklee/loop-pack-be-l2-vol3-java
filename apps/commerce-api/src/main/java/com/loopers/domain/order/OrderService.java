@@ -110,6 +110,10 @@ public class OrderService {
             throw new CoreException(ErrorType.NOT_FOUND, "주문을 찾을 수 없습니다.");
         }
 
+        if (order.getStatus() == OrderStatus.PAYMENT_FAILED) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "결제 실패로 인해 취소할 수 없습니다.");
+        }
+
         order.cancel();
 
         List<OrderItem> items = orderItemReader.findAllByOrderId(orderId);

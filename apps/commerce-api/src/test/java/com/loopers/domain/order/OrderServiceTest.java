@@ -253,6 +253,24 @@ class OrderServiceTest {
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.NOT_FOUND);
         }
+
+        @DisplayName("결제 실패 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenPaymentFailed() {
+            // Arrange
+            Order order = Order.create(1L, "홍길동", "010-1234-5678", "12345", "주소", null, 100000L);
+            order.failPayment();
+            fakeOrderReader.addOrder(order);
+
+            // Act & Assert
+            CoreException exception = assertThrows(CoreException.class, () ->
+                orderService.cancelOrder(order.getId(), 1L)
+            );
+            assertAll(
+                () -> assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST),
+                () -> assertThat(exception.getMessage()).contains("결제 실패로 인해 취소할 수 없습니다.")
+            );
+        }
     }
 
     @DisplayName("내 주문 목록을 조회할 때, ")
