@@ -27,13 +27,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 class PaymentV1ApiE2ETest {
@@ -310,6 +317,73 @@ class PaymentV1ApiE2ETest {
 
             // Assert: 여전히 COMPLETED (무시됨)
             assertThat(secondResponse.getBody().data().payment().status()).isEqualTo("COMPLETED");
+        }
+    }
+
+    @DisplayName("동시 결제 실행 방지")
+    @Nested
+    class ConcurrentExecutePayment {
+
+        @Test
+        @DisplayName("동일 결제를 동시에 실행하면 하나만 PG 호출에 성공하고 나머지는 거부된다")
+        void onlyOnePgCallOnConcurrentExecution() throws Exception {
+            // Arrange
+            registerMember();
+            Long brandId = registerBrand();
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100);
+            Long addressId = registerAddress();
+            Long orderId = createOrderAndGetId(productId, 1);
+
+            given(paymentGateway.requestPayment(anyLong(), anyString(), anyString(), anyString(), anyLong()))
+                .willReturn(new PaymentGatewayResponse("txn-concurrent", String.format("%06d", orderId), "PENDING", null));
+
+            var createRequest = new PaymentV1Dto.CreatePaymentRequest(orderId, "SAMSUNG", "1234-5678-9012-3456");
+            Long paymentId = testRestTemplate.exchange(
+                "/api/v1/payments", HttpMethod.POST,
+                new HttpEntity<>(createRequest, authHeaders()),
+                new ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+            ).getBody().data().payment().id();
+
+            // Act: 5개 스레드에서 동시에 결제 실행
+            int threadCount = 5;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(1);
+            List<Future<ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>>>> futures = new ArrayList<>();
+
+            for (int i = 0; i < threadCount; i++) {
+                futures.add(executor.submit(() -> {
+                    latch.await();
+                    return testRestTemplate.exchange(
+                        "/api/v1/payments/" + paymentId + "/pay",
+                        HttpMethod.POST,
+                        new HttpEntity<>(authHeaders()),
+                        new ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+                    );
+                }));
+            }
+
+            latch.countDown();
+
+            List<ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>>> results = new ArrayList<>();
+            for (Future<ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>>> future : futures) {
+                results.add(future.get());
+            }
+            executor.shutdown();
+
+            // Assert: PG 호출은 정확히 1번만 발생
+            verify(paymentGateway, times(1))
+                .requestPayment(anyLong(), anyString(), anyString(), anyString(), anyLong());
+
+            // Assert: 성공 응답은 정확히 1건
+            long successCount = results.stream()
+                .filter(r -> r.getStatusCode() == HttpStatus.OK)
+                .filter(r -> {
+                    var data = r.getBody().data();
+                    return data != null && data.payment() != null
+                        && "PROCESSING".equals(data.payment().status());
+                })
+                .count();
+            assertThat(successCount).isEqualTo(1);
         }
     }
 

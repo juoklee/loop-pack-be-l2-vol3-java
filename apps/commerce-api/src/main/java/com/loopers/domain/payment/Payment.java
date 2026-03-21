@@ -63,13 +63,19 @@ public class Payment extends BaseEntity {
         return new Payment(memberId, orderId, cardType, cardNo, amount);
     }
 
-    public void markProcessing(String transactionKey) {
+    public void startExecution() {
         if (this.status != PaymentStatus.REQUESTED) {
-            throw new CoreException(ErrorType.BAD_REQUEST, "요청 상태의 결제만 처리 중으로 변경할 수 있습니다.");
+            throw new CoreException(ErrorType.BAD_REQUEST, "요청 상태의 결제만 실행할 수 있습니다.");
+        }
+        this.status = PaymentStatus.PROCESSING;
+    }
+
+    public void markProcessing(String transactionKey) {
+        if (this.status != PaymentStatus.PROCESSING) {
+            throw new CoreException(ErrorType.BAD_REQUEST, "처리 중 상태의 결제만 트랜잭션 키를 설정할 수 있습니다.");
         }
         validateNotBlank(transactionKey, "트랜잭션 키는 필수입니다.");
         this.transactionKey = transactionKey;
-        this.status = PaymentStatus.PROCESSING;
     }
 
     public void complete() {

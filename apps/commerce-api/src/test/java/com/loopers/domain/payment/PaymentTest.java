@@ -70,31 +70,53 @@ class PaymentTest {
         }
     }
 
-    @DisplayName("PG 처리 시작할 때, ")
+    @DisplayName("실행 시작할 때, ")
     @Nested
-    class MarkProcessing {
+    class StartExecution {
 
-        @DisplayName("REQUESTED 상태이면, PROCESSING으로 변경되고 transactionKey가 설정된다.")
+        @DisplayName("REQUESTED 상태이면, PROCESSING으로 변경된다.")
         @Test
-        void marksProcessing_whenRequested() {
+        void startsExecution_whenRequested() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
 
-            payment.markProcessing("txn_abc123");
+            payment.startExecution();
 
-            assertAll(
-                () -> assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PROCESSING),
-                () -> assertThat(payment.getTransactionKey()).isEqualTo("txn_abc123")
-            );
+            assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PROCESSING);
         }
 
         @DisplayName("PROCESSING 상태이면, BAD_REQUEST 예외가 발생한다.")
         @Test
         void throwsBadRequest_whenAlreadyProcessing() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
+
+            CoreException exception = assertThrows(CoreException.class, payment::startExecution);
+            assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
+        }
+    }
+
+    @DisplayName("트랜잭션 키 설정할 때, ")
+    @Nested
+    class MarkProcessing {
+
+        @DisplayName("PROCESSING 상태이면, transactionKey가 설정된다.")
+        @Test
+        void setsTransactionKey_whenProcessing() {
+            Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
+
             payment.markProcessing("txn_abc123");
 
+            assertThat(payment.getTransactionKey()).isEqualTo("txn_abc123");
+        }
+
+        @DisplayName("REQUESTED 상태이면, BAD_REQUEST 예외가 발생한다.")
+        @Test
+        void throwsBadRequest_whenRequested() {
+            Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+
             CoreException exception = assertThrows(CoreException.class, () ->
-                payment.markProcessing("txn_other")
+                payment.markProcessing("txn_abc123")
             );
             assertThat(exception.getErrorType()).isEqualTo(ErrorType.BAD_REQUEST);
         }
@@ -103,6 +125,7 @@ class PaymentTest {
         @Test
         void throwsBadRequest_whenTransactionKeyIsBlank() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
 
             CoreException exception = assertThrows(CoreException.class, () ->
                 payment.markProcessing("")
@@ -119,6 +142,7 @@ class PaymentTest {
         @Test
         void completesPayment_whenProcessing() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
 
             payment.complete();
@@ -130,6 +154,7 @@ class PaymentTest {
         @Test
         void completesPayment_whenTimeout() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
             payment.timeout();
 
@@ -156,6 +181,7 @@ class PaymentTest {
         @Test
         void failsPayment_whenProcessing() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
 
             payment.fail("한도 초과");
@@ -183,6 +209,7 @@ class PaymentTest {
         @Test
         void failsPayment_whenTimeout() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
             payment.timeout();
 
@@ -198,6 +225,7 @@ class PaymentTest {
         @Test
         void throwsBadRequest_whenAlreadyCompleted() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
             payment.complete();
 
@@ -216,6 +244,7 @@ class PaymentTest {
         @Test
         void timesOut_whenProcessing() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
 
             payment.timeout();
@@ -239,6 +268,7 @@ class PaymentTest {
         @Test
         void throwsBadRequest_whenCompleted() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc123");
             payment.complete();
 

@@ -120,6 +120,7 @@ class PaymentFacadeTest {
             // given
             stubMember();
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            given(paymentService.getPaymentForUpdate(PAYMENT_ID)).willReturn(payment);
             given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
 
             PaymentGatewayResponse pgResponse = new PaymentGatewayResponse("txn-001", String.valueOf(ORDER_ID), "PENDING", null);
@@ -140,6 +141,7 @@ class PaymentFacadeTest {
             // given
             stubMember();
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            given(paymentService.getPaymentForUpdate(PAYMENT_ID)).willReturn(payment);
             given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
 
             given(paymentGateway.requestPayment(eq(MEMBER_ID), anyString(), anyString(), anyString(), anyLong()))
@@ -164,6 +166,7 @@ class PaymentFacadeTest {
             // given
             stubMember();
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            given(paymentService.getPaymentForUpdate(PAYMENT_ID)).willReturn(payment);
             given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
 
             PaymentGatewayResponse pgResponse = new PaymentGatewayResponse("txn-001", String.valueOf(ORDER_ID), "FAILED", "한도 초과");
@@ -190,6 +193,7 @@ class PaymentFacadeTest {
             // given
             stubMember();
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            given(paymentService.getPaymentForUpdate(PAYMENT_ID)).willReturn(payment);
             given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
 
             PaymentGatewayResponse pgResponse = new PaymentGatewayResponse("txn-001", String.valueOf(ORDER_ID), "FAILED", "잘못된 카드");
@@ -226,6 +230,7 @@ class PaymentFacadeTest {
         void successCallback() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
 
@@ -245,6 +250,7 @@ class PaymentFacadeTest {
         void failedCallback() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
 
@@ -266,6 +272,7 @@ class PaymentFacadeTest {
         void duplicateCallbackIgnored() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             payment.complete();
             given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
@@ -288,6 +295,7 @@ class PaymentFacadeTest {
         void success() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
 
@@ -315,6 +323,7 @@ class PaymentFacadeTest {
         void lateSuccessCallbackAfterTimeout() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             payment.timeout();
             given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
@@ -336,6 +345,7 @@ class PaymentFacadeTest {
         void lateSuccessCallbackOrderStillPending() {
             // given
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn-001");
             payment.timeout();
             given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);

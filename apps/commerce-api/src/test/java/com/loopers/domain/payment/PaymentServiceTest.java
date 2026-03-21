@@ -94,6 +94,7 @@ class PaymentServiceTest {
         @Test
         void returnsPayment_whenFoundByTransactionKey() {
             Payment payment = Payment.create(1L, 100L, "SAMSUNG", "1234-5678-9012-3456", 50000L);
+            payment.startExecution();
             payment.markProcessing("txn_abc");
             given(paymentReader.findByTransactionKey("txn_abc")).willReturn(Optional.of(payment));
 

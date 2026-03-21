@@ -5,6 +5,7 @@ import java.util.Optional;
 
 public interface PaymentReader {
     Optional<Payment> findById(Long id);
+    Optional<Payment> findByIdForUpdate(Long id);
     Optional<Payment> findByTransactionKey(String transactionKey);
     Optional<Payment> findActiveByOrderId(Long orderId);
     List<Payment> findAllByOrderId(Long orderId);

@@ -25,6 +25,11 @@ public class PaymentReaderImpl implements PaymentReader {
     }
 
     @Override
+    public Optional<Payment> findByIdForUpdate(Long id) {
+        return paymentJpaRepository.findByIdForUpdate(id);
+    }
+
+    @Override
     public Optional<Payment> findByTransactionKey(String transactionKey) {
         return paymentJpaRepository.findByTransactionKey(transactionKey);
     }

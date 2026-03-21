@@ -57,11 +57,9 @@ public class PaymentFacade {
 
     public PaymentInfo executePayment(String loginId, Long paymentId) {
         Long memberId = getMemberId(loginId);
-        Payment payment = getPaymentWithOwnerCheck(paymentId, memberId);
 
-        if (payment.getStatus() != com.loopers.domain.payment.PaymentStatus.REQUESTED) {
-            throw new CoreException(ErrorType.BAD_REQUEST, "요청 상태의 결제만 실행할 수 있습니다.");
-        }
+        // 비관적 락 + 상태 전환 (REQUESTED → PROCESSING) — 중복 PG 호출 방지
+        Payment payment = self.claimPaymentForExecution(paymentId, memberId);
 
         // PG 호출 (트랜잭션 밖)
         PaymentGatewayResponse pgResponse = paymentGateway.requestPayment(
@@ -77,6 +75,16 @@ public class PaymentFacade {
     }
 
     @Transactional
+    public Payment claimPaymentForExecution(Long paymentId, Long memberId) {
+        Payment payment = paymentService.getPaymentForUpdate(paymentId);
+        if (!payment.getMemberId().equals(memberId)) {
+            throw new CoreException(ErrorType.NOT_FOUND, "결제를 찾을 수 없습니다.");
+        }
+        payment.startExecution();
+        return payment;
+    }
+
+    @Transactional
     public PaymentInfo processPaymentResponse(Long paymentId, PaymentGatewayResponse pgResponse) {
         Payment payment = paymentService.getPayment(paymentId);
 
@@ -87,14 +95,16 @@ public class PaymentFacade {
             return PaymentInfo.from(payment);
         }
 
-        if (pgResponse.isPending()) {
-            payment.markProcessing(pgResponse.transactionKey());
-        } else if (pgResponse.isSuccess()) {
-            payment.markProcessing(pgResponse.transactionKey());
+        // 복구 스케줄러에서 REQUESTED 상태로 호출되는 경우 처리
+        if (payment.getStatus() == com.loopers.domain.payment.PaymentStatus.REQUESTED) {
+            payment.startExecution();
+        }
+        payment.markProcessing(pgResponse.transactionKey());
+
+        if (pgResponse.isSuccess()) {
             payment.complete();
             completeOrder(payment);
         } else if (pgResponse.isFailed()) {
-            payment.markProcessing(pgResponse.transactionKey());
             payment.fail(pgResponse.reason());
             compensateOrder(payment);
         }
