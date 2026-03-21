@@ -44,13 +44,13 @@ resilience4j:
   retry:
     instances:
       pgRetry:
-        max-attempts: 2
-        wait-duration: 1s
-        retry-exceptions:
+        max-attempts: 2          # 최초 1회 시도 + 1회 재시도 = 총 2회 호출
+        wait-duration: 1s        # 재시도 간 대기 시간
+        retry-exceptions:        # 재시도 대상: 일시적 네트워크/서버 오류
           - java.net.SocketTimeoutException
           - org.springframework.web.client.ResourceAccessException
           - org.springframework.web.client.HttpServerErrorException
-        ignore-exceptions:
+        ignore-exceptions:       # 재시도 제외: 비즈니스 로직 예외
           - com.loopers.support.error.CoreException
 
 springdoc:
