@@ -27,7 +27,7 @@ public class PaymentRecoveryScheduler {
     private final PaymentGateway paymentGateway;
     private final PaymentFacade paymentFacade;
 
-    @Scheduled(fixedRate = 30_000)
+    @Scheduled(fixedDelay = 30_000)
     public void recoverStuckPayments() {
         recoverStuckProcessing();
         recoverStuckRequested();
