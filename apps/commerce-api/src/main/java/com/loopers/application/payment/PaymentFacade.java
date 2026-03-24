@@ -12,11 +12,14 @@ import com.loopers.domain.payment.PaymentGatewayResponse;
 import com.loopers.domain.payment.PaymentService;
 import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
+import com.loopers.domain.event.PaymentCompletedEvent;
+import com.loopers.domain.event.PaymentFailedEvent;
 import com.loopers.support.error.CoreException;
 import com.loopers.support.error.ErrorType;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,6 +38,7 @@ public class PaymentFacade {
     private final ProductService productService;
     private final CouponService couponService;
     private final PaymentGateway paymentGateway;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Lazy @Autowired
     private PaymentFacade self;
@@ -104,9 +108,13 @@ public class PaymentFacade {
         if (pgResponse.isSuccess()) {
             payment.complete();
             completeOrder(payment);
+            eventPublisher.publishEvent(new PaymentCompletedEvent(
+                payment.getId(), payment.getOrderId(), payment.getMemberId(), payment.getAmount()));
         } else if (pgResponse.isFailed()) {
             payment.fail(pgResponse.reason());
             compensateOrder(payment);
+            eventPublisher.publishEvent(new PaymentFailedEvent(
+                payment.getId(), payment.getOrderId(), payment.getMemberId(), pgResponse.reason()));
         }
 
         return PaymentInfo.from(payment);
@@ -125,9 +133,13 @@ public class PaymentFacade {
         if ("SUCCESS".equals(status)) {
             payment.complete();
             completeOrder(payment);
+            eventPublisher.publishEvent(new PaymentCompletedEvent(
+                payment.getId(), payment.getOrderId(), payment.getMemberId(), payment.getAmount()));
         } else if ("FAILED".equals(status)) {
             payment.fail(reason);
             compensateOrder(payment);
+            eventPublisher.publishEvent(new PaymentFailedEvent(
+                payment.getId(), payment.getOrderId(), payment.getMemberId(), reason));
         } else {
             throw new CoreException(ErrorType.INVALID_PG_STATUS);
         }

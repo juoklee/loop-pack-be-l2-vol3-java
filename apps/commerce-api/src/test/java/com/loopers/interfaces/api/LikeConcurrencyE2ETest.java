@@ -100,9 +100,10 @@ class LikeConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — 스케줄러 동기화 후 likeCount 확인
+            // Assert — 비동기 이벤트 처리 대기 후 스케줄러 동기화
             assertThat(successCount.get()).isEqualTo(threadCount);
 
+            Thread.sleep(1000);
             likeCountSyncScheduler.syncLikeCounts();
             cacheManager.getCacheNames().forEach(name -> cacheManager.getCache(name).clear());
 
@@ -217,9 +218,10 @@ class LikeConcurrencyE2ETest {
             latch.await();
             executor.shutdown();
 
-            // Assert — 스케줄러 동기화 후 likeCount 확인
+            // Assert — 비동기 이벤트 처리 대기 후 스케줄러 동기화
             assertThat(successCount.get()).isEqualTo(threadCount);
 
+            Thread.sleep(1000);
             likeCountSyncScheduler.syncLikeCounts();
 
             ResponseEntity<ApiResponse<BrandV1Dto.BrandResponse>> brandResponse = testRestTemplate.exchange(

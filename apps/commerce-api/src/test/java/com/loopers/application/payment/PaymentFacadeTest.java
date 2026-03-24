@@ -23,6 +23,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -50,6 +51,7 @@ class PaymentFacadeTest {
     @Mock private ProductService productService;
     @Mock private CouponService couponService;
     @Mock private PaymentGateway paymentGateway;
+    @Mock private ApplicationEventPublisher eventPublisher;
 
     private static final String LOGIN_ID = "testuser";
     private static final Long MEMBER_ID = 1L;

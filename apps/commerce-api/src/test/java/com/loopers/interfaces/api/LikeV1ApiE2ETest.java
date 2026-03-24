@@ -113,15 +113,15 @@ class LikeV1ApiE2ETest {
             );
         }
 
-        @DisplayName("좋아요 후 스케줄러 동기화 전까지 상품 상세의 likeCount는 0이다.")
+        @DisplayName("좋아요 후 이벤트 리스너에 의해 상품 상세의 likeCount가 즉시 반영된다.")
         @Test
-        void likeCountNotReflectedBeforeSync() {
+        void likeCountReflectedByEventListener() throws InterruptedException {
             // Arrange
             registerMember("user1", "Test1234!");
             Long brandId = registerBrand("Nike", "Just Do It");
             Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100, 5);
 
-            // Act - 좋아요 (MV 방식: product.likeCount는 즉시 갱신되지 않음)
+            // Act - 좋아요 (이벤트 리스너가 비동기로 likeCount 즉시 갱신)
             testRestTemplate.exchange(
                 "/api/v1/products/" + productId + "/likes",
                 HttpMethod.POST,
@@ -129,14 +129,17 @@ class LikeV1ApiE2ETest {
                 new ParameterizedTypeReference<ApiResponse<LikeV1Dto.ToggleResponse>>() {}
             );
 
-            // Assert - 스케줄러 실행 전이므로 상품 상세의 likeCount는 아직 0
+            // 비동기 이벤트 처리 대기
+            Thread.sleep(500);
+
+            // Assert - 이벤트 리스너에 의해 likeCount가 즉시 반영됨
             ResponseEntity<ApiResponse<ProductV1Dto.ProductResponse>> productResponse = testRestTemplate.exchange(
                 "/api/v1/products/" + productId,
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<>() {}
             );
-            assertThat(productResponse.getBody().data().product().likeCount()).isZero();
+            assertThat(productResponse.getBody().data().product().likeCount()).isEqualTo(1);
         }
 
         @DisplayName("좋아요 후 스케줄러 동기화하면 상품 상세 캐시가 갱신되어 likeCount가 반영된다.")

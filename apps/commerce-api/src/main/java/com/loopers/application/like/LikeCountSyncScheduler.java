@@ -25,7 +25,7 @@ public class LikeCountSyncScheduler {
     private final ProductCacheManager productCacheManager;
     private final TransactionTemplate transactionTemplate;
 
-    @Scheduled(fixedRate = 300_000)
+    @Scheduled(fixedRate = 600_000)
     public void syncLikeCounts() {
         syncProductLikeCounts();
         syncBrandLikeCounts();
