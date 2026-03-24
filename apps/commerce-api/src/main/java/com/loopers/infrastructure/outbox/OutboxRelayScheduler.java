@@ -2,11 +2,14 @@ package com.loopers.infrastructure.outbox;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.producer.ProducerRecord;
+import org.apache.kafka.common.header.internals.RecordHeader;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Slf4j
@@ -24,16 +27,19 @@ public class OutboxRelayScheduler {
 
         for (OutboxEvent event : events) {
             try {
-                kafkaTemplate.send(event.getTopic(), event.getPartitionKey(), event.getPayload())
-                    .whenComplete((result, ex) -> {
-                        if (ex != null) {
-                            log.error("Kafka 발행 실패. eventId={}, topic={}, error={}",
-                                event.getId(), event.getTopic(), ex.getMessage());
-                        }
-                    });
+                ProducerRecord<Object, Object> record = new ProducerRecord<>(
+                    event.getTopic(), null, event.getPartitionKey(), event.getPayload()
+                );
+                record.headers().add(new RecordHeader(
+                    "eventId", String.valueOf(event.getId()).getBytes(StandardCharsets.UTF_8)
+                ));
+
+                kafkaTemplate.send(record).get();
                 event.markPublished();
             } catch (Exception e) {
-                log.error("Outbox relay 실패. eventId={}, error={}", event.getId(), e.getMessage());
+                log.error("Outbox relay 실패. eventId={}, topic={}, error={}",
+                    event.getId(), event.getTopic(), e.getMessage());
+                break;
             }
         }
 
