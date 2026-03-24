@@ -128,6 +128,8 @@ public class PaymentFacade {
         } else if ("FAILED".equals(status)) {
             payment.fail(reason);
             compensateOrder(payment);
+        } else {
+            throw new CoreException(ErrorType.INVALID_PG_STATUS);
         }
 
         return PaymentInfo.from(payment);
