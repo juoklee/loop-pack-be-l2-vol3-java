@@ -14,6 +14,7 @@ import com.loopers.domain.product.Product;
 import com.loopers.domain.product.ProductService;
 import com.loopers.domain.event.OrderCancelledEvent;
 import com.loopers.domain.event.OrderCreatedEvent;
+import com.loopers.domain.outbox.OutboxEventPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
@@ -35,6 +36,7 @@ public class OrderFacade {
     private final AddressService addressService;
     private final CouponService couponService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public OrderInfo createOrder(String loginId, Long addressId, Long memberCouponId,
@@ -98,8 +100,11 @@ public class OrderFacade {
             .map(cmd -> new OrderCreatedEvent.OrderItemSnapshot(
                 cmd.productId(), cmd.productName(), cmd.productPrice(), cmd.quantity()))
             .toList();
-        eventPublisher.publishEvent(new OrderCreatedEvent(
-            order.getId(), memberId, order.getTotalAmount(), itemSnapshots));
+        OrderCreatedEvent orderCreatedEvent = new OrderCreatedEvent(
+            order.getId(), memberId, order.getTotalAmount(), itemSnapshots);
+        eventPublisher.publishEvent(orderCreatedEvent);
+        outboxEventPublisher.publish("ORDER", order.getId(), "ORDER_CREATED",
+            "order-events", String.valueOf(order.getId()), orderCreatedEvent);
 
         return OrderInfo.of(order, items);
     }

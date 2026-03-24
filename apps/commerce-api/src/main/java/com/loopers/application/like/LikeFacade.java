@@ -5,6 +5,7 @@ import com.loopers.domain.PageResult;
 import com.loopers.domain.brand.Brand;
 import com.loopers.domain.brand.BrandService;
 import com.loopers.domain.event.LikeToggledEvent;
+import com.loopers.domain.outbox.OutboxEventPublisher;
 import com.loopers.domain.like.Like;
 import com.loopers.domain.like.LikeService;
 import com.loopers.domain.like.LikeTargetType;
@@ -31,6 +32,7 @@ public class LikeFacade {
     private final BrandService brandService;
     private final LikeService likeService;
     private final ApplicationEventPublisher eventPublisher;
+    private final OutboxEventPublisher outboxEventPublisher;
 
     @Transactional
     public LikeToggleInfo toggleProductLike(String loginId, Long productId) {
@@ -40,7 +42,10 @@ public class LikeFacade {
         boolean liked = likeService.toggleLike(memberId, LikeTargetType.PRODUCT, productId);
         int likeCount = likeService.countLikes(LikeTargetType.PRODUCT, productId);
 
-        eventPublisher.publishEvent(new LikeToggledEvent(memberId, LikeTargetType.PRODUCT, productId, liked));
+        LikeToggledEvent productLikeEvent = new LikeToggledEvent(memberId, LikeTargetType.PRODUCT, productId, liked);
+        eventPublisher.publishEvent(productLikeEvent);
+        outboxEventPublisher.publish("PRODUCT", productId, "LIKE_TOGGLED",
+            "catalog-events", String.valueOf(productId), productLikeEvent);
 
         return new LikeToggleInfo(liked, likeCount);
     }
