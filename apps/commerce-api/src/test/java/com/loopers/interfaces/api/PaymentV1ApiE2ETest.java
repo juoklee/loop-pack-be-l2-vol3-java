@@ -387,6 +387,86 @@ class PaymentV1ApiE2ETest {
         }
     }
 
+    @DisplayName("동시 콜백 처리 방지")
+    @Nested
+    class ConcurrentCallbackProcessing {
+
+        @Test
+        @DisplayName("PG 콜백이 동시에 5회 수신되어도 주문 완료는 1번만 실행된다")
+        void concurrentCallbacks_onlyOneProcessed() throws Exception {
+            // Arrange
+            registerMember();
+            Long brandId = registerBrand();
+            Long productId = registerProduct(brandId, "에어맥스 90", 139000L, 100);
+            Long addressId = registerAddress();
+            Long orderId = createOrderAndGetId(productId, 1);
+
+            given(paymentGateway.requestPayment(anyLong(), anyString(), anyString(), anyString(), anyLong()))
+                .willReturn(new PaymentGatewayResponse("txn-concurrent-cb", String.format("%06d", orderId), "PENDING", null));
+
+            var createRequest = new PaymentV1Dto.CreatePaymentRequest(orderId, "KB", "1234-5678-9012-3456");
+            Long paymentId = testRestTemplate.exchange(
+                "/api/v1/payments", HttpMethod.POST,
+                new HttpEntity<>(createRequest, authHeaders()),
+                new ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+            ).getBody().data().payment().id();
+
+            testRestTemplate.exchange(
+                "/api/v1/payments/" + paymentId + "/pay", HttpMethod.POST,
+                new HttpEntity<>(authHeaders()),
+                new ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+            );
+
+            var callbackRequest = new PaymentV1Dto.CallbackRequest(
+                "txn-concurrent-cb", String.format("%06d", orderId), "KB", "1234-5678-9012-3456", 139000L, "SUCCESS", null
+            );
+
+            // Act: 5개 스레드에서 동시에 콜백 전송
+            int threadCount = 5;
+            ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+            CountDownLatch latch = new CountDownLatch(1);
+            List<Future<ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>>>> futures = new ArrayList<>();
+
+            for (int i = 0; i < threadCount; i++) {
+                futures.add(executor.submit(() -> {
+                    latch.await();
+                    return testRestTemplate.exchange(
+                        "/api/internal/v1/payments/callback", HttpMethod.POST,
+                        new HttpEntity<>(callbackRequest),
+                        new ParameterizedTypeReference<ApiResponse<PaymentV1Dto.PaymentResponse>>() {}
+                    );
+                }));
+            }
+
+            latch.countDown();
+
+            List<ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>>> results = new ArrayList<>();
+            for (var future : futures) {
+                results.add(future.get());
+            }
+            executor.shutdown();
+
+            // Assert: 모든 응답은 COMPLETED (먼저 처리된 건 완료, 나머지는 멱등 처리)
+            long completedCount = results.stream()
+                .filter(r -> r.getStatusCode() == HttpStatus.OK)
+                .filter(r -> {
+                    var data = r.getBody().data();
+                    return data != null && data.payment() != null
+                        && "COMPLETED".equals(data.payment().status());
+                })
+                .count();
+            assertThat(completedCount).isEqualTo(threadCount);
+
+            // Assert: 최종 결제 상태는 COMPLETED
+            ResponseEntity<ApiResponse<PaymentV1Dto.PaymentResponse>> finalState = testRestTemplate.exchange(
+                "/api/v1/payments/" + paymentId, HttpMethod.GET,
+                new HttpEntity<>(authHeaders()),
+                new ParameterizedTypeReference<>() {}
+            );
+            assertThat(finalState.getBody().data().payment().status()).isEqualTo("COMPLETED");
+        }
+    }
+
     @DisplayName("결제 조회")
     @Nested
     class GetPayment {

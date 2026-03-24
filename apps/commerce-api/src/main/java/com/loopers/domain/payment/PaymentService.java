@@ -38,6 +38,11 @@ public class PaymentService {
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "결제를 찾을 수 없습니다."));
     }
 
+    public Payment getPaymentByTransactionKeyForUpdate(String transactionKey) {
+        return paymentReader.findByTransactionKeyForUpdate(transactionKey)
+            .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "결제를 찾을 수 없습니다."));
+    }
+
     public List<Payment> getPaymentsByOrderId(Long orderId) {
         return paymentReader.findAllByOrderId(orderId);
     }

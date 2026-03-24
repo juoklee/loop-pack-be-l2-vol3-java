@@ -232,7 +232,7 @@ class PaymentFacadeTest {
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
             payment.startExecution();
             payment.markProcessing("txn-001");
-            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+            given(paymentService.getPaymentByTransactionKeyForUpdate("txn-001")).willReturn(payment);
 
             Order order = mock(Order.class);
             given(orderService.getOrder(ORDER_ID)).willReturn(order);
@@ -252,7 +252,7 @@ class PaymentFacadeTest {
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
             payment.startExecution();
             payment.markProcessing("txn-001");
-            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+            given(paymentService.getPaymentByTransactionKeyForUpdate("txn-001")).willReturn(payment);
 
             Order order = mock(Order.class);
             given(orderService.getOrder(ORDER_ID)).willReturn(order);
@@ -275,7 +275,7 @@ class PaymentFacadeTest {
             payment.startExecution();
             payment.markProcessing("txn-001");
             payment.complete();
-            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+            given(paymentService.getPaymentByTransactionKeyForUpdate("txn-001")).willReturn(payment);
 
             // when
             PaymentInfo result = paymentFacade.processCallback("txn-001", "SUCCESS", null);
@@ -297,7 +297,7 @@ class PaymentFacadeTest {
             Payment payment = Payment.create(MEMBER_ID, ORDER_ID, "SAMSUNG", "1234-5678-9012-3456", 50000L);
             payment.startExecution();
             payment.markProcessing("txn-001");
-            given(paymentService.getPayment(PAYMENT_ID)).willReturn(payment);
+            given(paymentService.getPaymentForUpdate(PAYMENT_ID)).willReturn(payment);
 
             Order order = mock(Order.class);
             given(orderService.getOrder(ORDER_ID)).willReturn(order);
@@ -326,7 +326,7 @@ class PaymentFacadeTest {
             payment.startExecution();
             payment.markProcessing("txn-001");
             payment.timeout();
-            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+            given(paymentService.getPaymentByTransactionKeyForUpdate("txn-001")).willReturn(payment);
 
             Order order = mock(Order.class);
             given(order.getStatus()).willReturn(OrderStatus.PAYMENT_FAILED);
@@ -348,7 +348,7 @@ class PaymentFacadeTest {
             payment.startExecution();
             payment.markProcessing("txn-001");
             payment.timeout();
-            given(paymentService.getPaymentByTransactionKey("txn-001")).willReturn(payment);
+            given(paymentService.getPaymentByTransactionKeyForUpdate("txn-001")).willReturn(payment);
 
             Order order = mock(Order.class);
             given(order.getStatus()).willReturn(OrderStatus.PENDING_PAYMENT);

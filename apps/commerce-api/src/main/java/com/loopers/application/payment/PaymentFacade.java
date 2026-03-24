@@ -114,7 +114,7 @@ public class PaymentFacade {
 
     @Transactional
     public PaymentInfo processCallback(String transactionKey, String status, String reason) {
-        Payment payment = paymentService.getPaymentByTransactionKey(transactionKey);
+        Payment payment = paymentService.getPaymentByTransactionKeyForUpdate(transactionKey);
 
         if (payment.getStatus().isTerminal()) {
             log.info("이미 처리된 결제 콜백 무시. transactionKey={}, status={}",
@@ -137,7 +137,7 @@ public class PaymentFacade {
 
     @Transactional
     public void timeoutPayment(Long paymentId) {
-        Payment payment = paymentService.getPayment(paymentId);
+        Payment payment = paymentService.getPaymentForUpdate(paymentId);
         payment.timeout();
         compensateOrder(payment);
         log.info("결제 타임아웃 처리 완료. paymentId={}, orderId={}", paymentId, payment.getOrderId());

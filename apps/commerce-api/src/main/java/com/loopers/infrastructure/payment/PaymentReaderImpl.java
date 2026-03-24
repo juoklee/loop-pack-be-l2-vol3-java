@@ -35,6 +35,11 @@ public class PaymentReaderImpl implements PaymentReader {
     }
 
     @Override
+    public Optional<Payment> findByTransactionKeyForUpdate(String transactionKey) {
+        return paymentJpaRepository.findByTransactionKeyForUpdate(transactionKey);
+    }
+
+    @Override
     public Optional<Payment> findActiveByOrderId(Long orderId) {
         return paymentJpaRepository.findFirstByOrderIdAndStatusIn(
             orderId, List.of(PaymentStatus.REQUESTED, PaymentStatus.PROCESSING)
