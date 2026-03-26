@@ -64,7 +64,7 @@ public class CouponService {
         coupon.delete();
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = CoreException.class)
     public MemberCoupon issueCoupon(Long couponId, Long memberId) {
         Coupon coupon = couponReader.findByIdForUpdate(couponId)
             .orElseThrow(() -> new CoreException(ErrorType.NOT_FOUND, "쿠폰을 찾을 수 없습니다."));
