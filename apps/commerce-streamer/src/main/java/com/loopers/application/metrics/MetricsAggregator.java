@@ -6,8 +6,11 @@ import com.loopers.domain.metrics.ProductMetrics;
 import com.loopers.domain.metrics.ProductMetricsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
+
+import java.util.concurrent.ThreadLocalRandom;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.List;
 
@@ -16,45 +19,72 @@ import java.util.List;
 @Service
 public class MetricsAggregator {
 
+    private static final int MAX_RETRIES = 20;
+
     private final ProductMetricsRepository productMetricsRepository;
     private final EventHandledRepository eventHandledRepository;
+    private final TransactionTemplate transactionTemplate;
 
-    @Transactional
     public void handleLikeToggled(String eventId, Long productId, boolean liked) {
-        if (isDuplicate(eventId)) return;
+        executeWithRetry(eventId, () -> transactionTemplate.executeWithoutResult(status -> {
+            if (isDuplicate(eventId)) return;
 
-        ProductMetrics metrics = getOrCreate(productId);
+            ProductMetrics metrics = getOrCreate(productId);
 
-        if (liked) {
-            metrics.incrementLikeCount();
-        } else {
-            metrics.decrementLikeCount();
-        }
+            if (liked) {
+                metrics.incrementLikeCount();
+            } else {
+                metrics.decrementLikeCount();
+            }
 
-        markHandled(eventId, "LIKE_TOGGLED");
-        log.info("Like 집계 완료: productId={}, liked={}, likeCount={}", productId, liked, metrics.getLikeCount());
+            markHandled(eventId, "LIKE_TOGGLED");
+            log.info("Like 집계 완료: productId={}, liked={}, likeCount={}", productId, liked, metrics.getLikeCount());
+        }));
     }
 
-    @Transactional
     public void handleOrderCreated(String eventId, List<OrderItemInfo> items) {
-        if (isDuplicate(eventId)) return;
+        executeWithRetry(eventId, () -> transactionTemplate.executeWithoutResult(status -> {
+            if (isDuplicate(eventId)) return;
 
-        for (OrderItemInfo item : items) {
-            ProductMetrics metrics = getOrCreate(item.productId());
-            metrics.incrementOrderCount();
-            metrics.addSalesAmount(item.price() * item.quantity());
-        }
+            for (OrderItemInfo item : items) {
+                ProductMetrics metrics = getOrCreate(item.productId());
+                metrics.incrementOrderCount();
+                metrics.addSalesAmount(item.price() * item.quantity());
+            }
 
-        markHandled(eventId, "ORDER_CREATED");
-        log.info("주문 집계 완료: eventId={}, 상품 {}건", eventId, items.size());
+            markHandled(eventId, "ORDER_CREATED");
+            log.info("주문 집계 완료: eventId={}, 상품 {}건", eventId, items.size());
+        }));
     }
 
-    @Transactional
     public void handlePaymentCompleted(String eventId, Long orderId) {
-        if (isDuplicate(eventId)) return;
+        executeWithRetry(eventId, () -> transactionTemplate.executeWithoutResult(status -> {
+            if (isDuplicate(eventId)) return;
 
-        markHandled(eventId, "PAYMENT_COMPLETED");
-        log.info("결제 완료 이벤트 처리: eventId={}, orderId={}", eventId, orderId);
+            markHandled(eventId, "PAYMENT_COMPLETED");
+            log.info("결제 완료 이벤트 처리: eventId={}, orderId={}", eventId, orderId);
+        }));
+    }
+
+    private void executeWithRetry(String eventId, Runnable action) {
+        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            try {
+                action.run();
+                return;
+            } catch (ObjectOptimisticLockingFailureException e) {
+                if (attempt == MAX_RETRIES) {
+                    log.error("낙관적 락 충돌 최대 재시도 초과: eventId={}", eventId);
+                    throw e;
+                }
+                log.warn("낙관적 락 충돌, 재시도 {}/{}: eventId={}", attempt, MAX_RETRIES, eventId);
+                try {
+                    Thread.sleep(ThreadLocalRandom.current().nextLong(10, 50 * attempt));
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+            }
+        }
     }
 
     private boolean isDuplicate(String eventId) {
