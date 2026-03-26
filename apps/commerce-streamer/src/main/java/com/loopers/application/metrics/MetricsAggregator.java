@@ -19,7 +19,7 @@ import java.util.List;
 @Service
 public class MetricsAggregator {
 
-    private static final int MAX_RETRIES = 20;
+    private static final int MAX_RETRIES = 50;
 
     private final ProductMetricsRepository productMetricsRepository;
     private final EventHandledRepository eventHandledRepository;

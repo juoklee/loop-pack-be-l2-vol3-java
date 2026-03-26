@@ -47,11 +47,11 @@ class CouponAsyncIssueConcurrencyTest {
     }
 
     @Test
-    @DisplayName("100장 한정 쿠폰에 200명이 동시 발급 요청하면 정확히 100장만 발급된다")
+    @DisplayName("100장 한정 쿠폰에 1000명이 동시 발급 요청하면 정확히 100장만 발급된다")
     void concurrentAsyncIssue_onlyLimitedSucceeds() throws InterruptedException {
         // given
         int totalQuantity = 100;
-        int requestCount = 200;
+        int requestCount = 1000;
 
         Coupon coupon = couponService.createCoupon(
             "선착순 쿠폰", CouponType.FIXED, 5000L, null,
@@ -72,7 +72,7 @@ class CouponAsyncIssueConcurrencyTest {
         }
 
         // when — 1차: 200명이 동시에 processIssuance 호출 (동시성 경합 시뮬레이션)
-        ExecutorService executor = Executors.newFixedThreadPool(20);
+        ExecutorService executor = Executors.newFixedThreadPool(50);
         CountDownLatch latch = new CountDownLatch(requestCount);
 
         for (String requestId : requestIds) {

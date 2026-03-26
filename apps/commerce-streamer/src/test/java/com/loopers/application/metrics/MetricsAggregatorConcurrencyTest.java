@@ -31,16 +31,16 @@ class MetricsAggregatorConcurrencyTest {
     }
 
     @Test
-    @DisplayName("100명이 동시에 같은 상품 좋아요 → likeCount가 정확히 100이어야 한다")
+    @DisplayName("500명이 동시에 같은 상품 좋아요 → likeCount가 정확히 500이어야 한다")
     void concurrentLikeToggled_exactCount() throws InterruptedException {
         // given
         Long productId = 1L;
-        int requestCount = 100;
+        int requestCount = 500;
 
         // ProductMetrics를 미리 생성하여 getOrCreate 경합 방지
         productMetricsRepository.save(ProductMetrics.create(productId));
 
-        ExecutorService executor = Executors.newFixedThreadPool(20);
+        ExecutorService executor = Executors.newFixedThreadPool(50);
         CountDownLatch latch = new CountDownLatch(requestCount);
         AtomicInteger successCount = new AtomicInteger(0);
         AtomicInteger failCount = new AtomicInteger(0);
@@ -70,17 +70,17 @@ class MetricsAggregatorConcurrencyTest {
     }
 
     @Test
-    @DisplayName("50건 주문이 동시에 집계 → orderCount와 salesAmount가 정확해야 한다")
+    @DisplayName("300건 주문이 동시에 집계 → orderCount와 salesAmount가 정확해야 한다")
     void concurrentOrderCreated_exactAggregation() throws InterruptedException {
         // given
         Long productId = 1L;
-        int orderCount = 50;
+        int orderCount = 300;
         long pricePerItem = 10000L;
         int quantityPerOrder = 2;
 
         productMetricsRepository.save(ProductMetrics.create(productId));
 
-        ExecutorService executor = Executors.newFixedThreadPool(20);
+        ExecutorService executor = Executors.newFixedThreadPool(50);
         CountDownLatch latch = new CountDownLatch(orderCount);
         AtomicInteger successCnt = new AtomicInteger(0);
         AtomicInteger failCnt = new AtomicInteger(0);
